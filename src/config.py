@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.logger import logger
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -26,7 +27,7 @@ class Settings(BaseSettings):
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
         return PostgresDsn.build(
-            scheme="postgresql+psycopg",
+            scheme="postgresql+asyncpg",
             username=self.POSTGRES_USER,
             password=self.POSTGRES_PASSWORD,
             host=self.POSTGRES_SERVER,
@@ -39,7 +40,7 @@ _ROOT_DIRECTORY: Path = Path(__file__).resolve().parent.parent
 env_file_abs_path = Path.joinpath(_ROOT_DIRECTORY, ".env")
 
 if not Path.exists(env_file_abs_path):
-    # logger.critical(f"Отсутствует файл: {env_file_abs_path}")
+    logger.critical(f"Отсутствует файл: {env_file_abs_path}")
     exit(-1)
 
 settings = Settings(_env_file=env_file_abs_path)  # type: ignore
