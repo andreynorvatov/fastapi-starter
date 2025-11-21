@@ -8,3 +8,9 @@ dependencies = [
     "fastapi>=0.121.3",
     "granian>=2.6.0",
 ]
+
+[dependency-groups]
+dev = [
+    "granian[reload]>=2.6.0",
+    "pytest>=9.0.1",
+]
