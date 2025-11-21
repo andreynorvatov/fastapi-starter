@@ -12,5 +12,38 @@ dependencies = [
 [dependency-groups]
 dev = [
     "granian[reload]>=2.6.0",
+    "httpx>=0.28.1",
+    "mypy>=1.18.2",
     "pytest>=9.0.1",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.14.5",
 ]
+
+[tool.mypy]
+strict = true                               # Максимально строгая проверка
+explicit_package_bases = true               # Рассматривать только явно указанные директории как пакеты
+exclude = ["venv", ".venv", "alembic"]      # Игнорировать указанные файлы и директории при проверке
+
+[[tool.mypy.overrides]]                     # Секция переопределения настроек
+module = [                                  # Указывает, к каким модулям применяются следующие правила
+    "pytest.*",
+    "pydantic.*",
+    "fastapi.*",
+    "httpx.*",
+    "pytest_asyncio.*"
+]
+ignore_missing_imports = true               # Игнорировать ошибки "import not found" или "cannot find implementation" для указанных модулей
+
+
+[tool.ruff]
+line-length = 110
+indent-width = 4
+target-version = "py314"
+exclude = ["alembic"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
