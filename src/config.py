@@ -44,3 +44,4 @@ if not Path.exists(env_file_abs_path):
     exit(-1)
 
 settings = Settings(_env_file=env_file_abs_path)  # type: ignore
+# print(settings.SQLALCHEMY_DATABASE_URI)

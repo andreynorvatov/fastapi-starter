@@ -13,7 +13,10 @@ from src.logger import logger
 async def lifespan(app: FastAPI):
     # Startup
     await db_connection_pool.connect()
+
     logger.info("Application started")
+    engine_stats = db_connection_pool.engine_stats
+    print(engine_stats)
     yield
     # Shutdown
     await db_connection_pool.disconnect()
