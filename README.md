@@ -28,6 +28,8 @@ uv run mypy .
 ## Запуск тестов
 ```shell
 uv run pytest
+uv run pytest -v
+uv run pytest -vv
 ```
 
 ```shell
@@ -49,19 +51,29 @@ https://github.com/emmett-framework/granian
 
 ## Backend
 
-1. Starter
-	1. [x] fastapi
-	2. [x] granian
-	3. [x] granian-reload
-	4. [x] pytest
-	5. [x] conftest.py асинхронный клиент
-	6. [x] test health_check
-	7. [x] ruff
-	8. [x] mypy
-	9. [ ] alembic
-	10. [ ] ORM
-	11. [ ] conftest.py с БД
-	12. [ ] logging
-	13. [ ] Фоновые асинхронные задачи
-	14. [ ] Мониторинг
-2. 
+1. [x] fastapi
+2. [x] granian
+3. [x] granian-reload
+4. [x] pytest
+5. [x] conftest.py асинхронный клиент
+6. [x] test health_check
+7. [x] ruff
+8. [x] mypy
+9. [x] config
+10. [x] .env_template
+11. [x] logging в приложении
+12. [ ] alembic
+13. [ ] ORM
+14. [ ] compose-example postgres
+15. [ ] conftest.py с БД 
+16. [ ] Фоновые асинхронные задачи
+17. [ ] Мониторинг
+18. [ ] Задать уровень логирования из конфига
+19. [ ] logging в midleware
+20. [ ] Таймзона
+21. [ ] Системная server-side rendering страница
+	1. [ ] Инфо о версии
+	2. [ ] Наименование
+	3. [ ] Схема БД
+	4. [ ] .env переменные
+22. 

@@ -15,12 +15,14 @@ async def lifespan(app: FastAPI):
     await db_connection_pool.connect()
 
     logger.info("Application started")
-    engine_stats = db_connection_pool.engine_stats
+    engine_stats = await db_connection_pool.engine_stats
     print(engine_stats)
     yield
     # Shutdown
     await db_connection_pool.disconnect()
     logger.info("Application stopped")
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="0.1",
