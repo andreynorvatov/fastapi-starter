@@ -9,7 +9,7 @@ from src.dependencies import get_db_connection
 
 example_router = APIRouter()
 
-@example_router.post("/examples/", response_model=ExampleRead)
+@example_router.post("/create", response_model=ExampleRead)
 async def create_example_endpoint(
         example: ExampleCreate,
         session: AsyncSession = Depends(get_db_connection)
@@ -21,14 +21,14 @@ async def create_example_endpoint(
 
     return await create_example(session, example)
 
-@example_router.get("/examples/{example_id}", response_model=ExampleRead)
+@example_router.get("/get/{example_id}", response_model=ExampleRead)
 async def read_example(example_id: int, session: AsyncSession = Depends(get_db_connection)):
     example = await session.get(Example, example_id)
     if not example:
         raise HTTPException(status_code=404, detail="Example not found")
     return example
 
-@example_router.get("/examples/", response_model=list[ExampleRead])
+@example_router.get("/get-all", response_model=list[ExampleRead])
 async def read_examples(
         skip: int = 0,
         limit: int = 100,

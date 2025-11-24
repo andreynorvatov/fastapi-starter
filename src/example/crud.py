@@ -9,7 +9,7 @@ async def get_example_by_email(session: AsyncSession, email: str) -> Example | N
     return result.scalars().first()
 
 async def create_example(session: AsyncSession, example_create: ExampleCreate) -> Example:
-    hashed_password = hash(example_create.password)
+    hashed_password = f"hashed_{example_create.password}"
 
     example = Example(
         email=example_create.email,
