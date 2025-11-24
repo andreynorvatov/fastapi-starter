@@ -1,9 +1,9 @@
-from datetime import datetime
-
 from sqlmodel import Field, SQLModel
 
+from src.model_mixins import TimestampMixin
 
-class Example(SQLModel, table=True):
+
+class Example(SQLModel, TimestampMixin, table=True):
     __tablename__ = "example"
 
     id: int | None = Field(default=None, primary_key=True)
@@ -12,7 +12,3 @@ class Example(SQLModel, table=True):
     full_name: str = Field(max_length=100)
     hashed_password: str = Field(max_length=255)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime | None = Field(
-        default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": datetime.utcnow}
-    )

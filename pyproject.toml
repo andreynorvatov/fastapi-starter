@@ -12,6 +12,7 @@ dependencies = [
     "granian>=2.6.0",
     "greenlet>=3.2.4",
     "pydantic-settings>=2.12.0",
+    "pytz>=2025.2",
     "sqlalchemy>=2.0.44",
     "sqlmodel>=0.0.27",
 ]
@@ -46,7 +47,7 @@ ignore_missing_imports = true               # Игнорировать ошиб�
 line-length = 110
 indent-width = 4
 target-version = "py314"
-exclude = ["alembic"]
+exclude = ["migrations"]
 
 [tool.ruff.lint]
 select = [
