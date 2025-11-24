@@ -1,10 +1,12 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import sys
+from logging.handlers import RotatingFileHandler
 
 LOG_FILE_PATH = "logs/app.log"
-LOG_FORMAT = ("%(asctime)s %(levelname)s - [%(module)s - %(funcName)s - %(lineno)d] - "
-"[%(processName)s (pid=%(process)d) - %(threadName)s (tid=%(thread)d)] - %(message)s")
+LOG_FORMAT = (
+    "%(asctime)s %(levelname)s - [%(module)s - %(funcName)s - %(lineno)d] - "
+    "[%(processName)s (pid=%(process)d) - %(threadName)s (tid=%(thread)d)] - %(message)s"
+)
 
 logger = logging.getLogger()
 
@@ -15,9 +17,9 @@ stream_handler.setFormatter(formatter)
 
 file_handler = RotatingFileHandler(
     LOG_FILE_PATH,
-    mode='a',
+    mode="a",
     encoding="utf-8",
-    maxBytes=10 * 1024 * 1024, # 10Mb
+    maxBytes=10 * 1024 * 1024,  # 10Mb
     backupCount=3,
 )
 file_handler.setFormatter(formatter)

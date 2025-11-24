@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.logger import logger
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file="../.env",

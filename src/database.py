@@ -1,31 +1,42 @@
 import asyncio
 import sys
-from typing import AsyncGenerator, Optional, Any
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import AsyncAdaptedQueuePool
-from sqlalchemy.exc import SQLAlchemyError
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 
-from src.logger import logger
 from src.config import settings
+from src.logger import logger
 
-class DatabaseManager:
 
+class DataBaseConnectionPool:
     def __init__(
-            self,
-            sqlalchemy_database_uri: str,
-            *,
-            echo: bool = False,
-            pool_size: int = 5,
-            max_overflow: int = 10,
-            pool_timeout: int = 30,
-            pool_recycle: int = 3600,
-            pool_pre_ping: bool = True
+        self,
+        sqlalchemy_database_uri: str,
+        *,
+        echo: bool = False,
+        pool_size: int = 5,
+        max_overflow: int = 10,
+        pool_timeout: int = 30,
+        pool_recycle: int = 3600,
+        pool_pre_ping: bool = True,
     ):
+        """
 
+        :param sqlalchemy_database_uri:
+        :param echo: Включение логирования SQL-запросов (полезно для отладки, но снижает производительность)
+        :param pool_size: Размер постоянного пула подключений, которые постоянно поддерживаются открытыми
+        :param max_overflow: Максимальное количество дополнительных подключений сверх pool_size
+        :param pool_timeout: Таймаут в секундах для получения подключения из пула перед возникновением ошибки
+        :param pool_recycle: Время в секундах, после которого подключение пересоздается (предотвращает использование устаревших соединений)
+        :param pool_pre_ping: Включение проверки жизнеспособности подключения перед использованием (устраняет "поломанные" соединения)
+        """
         self.sqlalchemy_database_uri = sqlalchemy_database_uri
-        self._engine: Optional[Any] = None
-        self._session_factory: Optional[async_sessionmaker] = None
+        self._engine: Any | None = None
+        self._session_factory: async_sessionmaker | None = None
 
         # Конфигурация пула соединений
         self._echo = echo
@@ -42,7 +53,7 @@ class DatabaseManager:
         """Настройка event loop"""
         if sys.platform == "win32":
             try:
-                if hasattr(asyncio, 'WindowsProactorEventLoopPolicy'):
+                if hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
                     if isinstance(asyncio.get_event_loop_policy(), asyncio.WindowsProactorEventLoopPolicy):
                         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             except Exception as e:
@@ -55,26 +66,18 @@ class DatabaseManager:
                 logger.warning("Соединение с базой данных уже установлено")
                 return
 
-            # Создаем engine с оптимизированными настройками
             self._engine = create_async_engine(
                 self.sqlalchemy_database_uri,
-                # Включение логгирования SQL-запросов (полезно для отладки, но снижает производительность)
                 echo=self._echo,
-                # Размер постоянного пула подключений - количество соединений, которые постоянно поддерживаются открытыми
                 pool_size=self._pool_size,
-                # Максимальное количество дополнительных подключений сверх pool_size, которые могут быть созданы при нагрузке
                 max_overflow=self._max_overflow,
-                # Таймаут в секундах для получения подключения из пула перед возникновением ошибки
                 pool_timeout=self._pool_timeout,
-                # Время в секундах, после которого подключение пересоздается (предотвращает использование устаревших соединений)
                 pool_recycle=self._pool_recycle,
-                # Включение проверки жизнеспособности подключения перед использованием (устраняет "поломанные" соединения)
                 pool_pre_ping=self._pool_pre_ping,
                 # Класс пула подключений - AsyncAdaptedQueuePool адаптирует стандартный QueuePool для асинхронной работы
                 poolclass=AsyncAdaptedQueuePool,
                 # Использование будущего API SQLAlchemy 2.0 (рекомендуется для новых проектов)
                 future=True,
-
                 connect_args={
                     # Таймаут в секундах для установки подключения к базе данных
                     "command_timeout": 60,
@@ -82,9 +85,11 @@ class DatabaseManager:
                         # Отключение JIT-компилятора (может улучшить производительность для коротких запросов)
                         "jit": "off",
                         # Имя приложения, которое будет отображаться в pg_stat_activity
-                        "application_name": settings.PROJECT_NAME
-                    }
-                } if "asyncpg" in self.sqlalchemy_database_uri else {} # Применяем настройки только для asyncpg
+                        "application_name": settings.PROJECT_NAME,
+                    },
+                }
+                if "asyncpg" in self.sqlalchemy_database_uri
+                else {},  # Применяем настройки только для asyncpg
             )
 
             self._session_factory = async_sessionmaker(
@@ -108,9 +113,8 @@ class DatabaseManager:
             )
 
             # Проверка подключения
-            result = await self._test_connection()
-
-            logger.info(f"Соединение с базой данных успешно установлено {result}")
+            await self._test_connection()
+            logger.info("Соединение с базой данных успешно установлено")
 
         except SQLAlchemyError as e:
             logger.error(f"Не удалось подключиться к базе данных: {e}")
@@ -146,7 +150,7 @@ class DatabaseManager:
         await self._safe_dispose()
         logger.info("Соединение с базой данных успешно закрыто")
 
-    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(self) -> AsyncGenerator[AsyncSession]:
         """Получить асинхронную сессию с улучшенной обработкой ошибок"""
         if not self._session_factory:
             raise RuntimeError("База данных не подключена. Сначала вызовите connect().")
@@ -169,35 +173,24 @@ class DatabaseManager:
     @property
     async def engine_stats(self) -> dict:
         """
-        Получить статистику пула соединений асинхронно
-
-        Returns:
-            dict: Статистика пула соединений с ключами:
-                - checkedout: количество используемых соединений
-                - checkedin: количество свободных соединений в пуле
-                - size: текущий размер пула
-                - overflow: количество соединений сверх лимита
-                - connections: общее количество активных соединений
-
-        Raises:
-            RuntimeError: Если подключение к базе данных не установлено
-
+        Получить статистику пула соединений
         Example:
-            stats = await db_manager.get_engine_stats()
-            print(f"Active connections: {stats['connections']}")
+            stats = await db_connection_pool.get_engine_stats()
+            logger.info(f"Active connections: {stats}")
         """
+
         if not self._engine:
             return {}
 
         # Конфигурация пула
         pool_config = {
-            "pool_size": getattr(self, '_pool_size', 'unknown'),
-            "max_overflow": getattr(self, '_max_overflow', 'unknown'),
-            "pool_timeout": getattr(self, '_pool_timeout', 'unknown'),
-            "pool_recycle": getattr(self, '_pool_recycle', 'unknown'),
-            "pool_pre_ping": getattr(self, '_pool_pre_ping', 'unknown'),
-            "isolation_level": getattr(self, '_isolation_level', 'unknown'),
-            "engine_echo": getattr(self, '_echo', False)
+            "pool_size": getattr(self, "_pool_size", "unknown"),
+            "max_overflow": getattr(self, "_max_overflow", "unknown"),
+            "pool_timeout": getattr(self, "_pool_timeout", "unknown"),
+            "pool_recycle": getattr(self, "_pool_recycle", "unknown"),
+            "pool_pre_ping": getattr(self, "_pool_pre_ping", "unknown"),
+            "isolation_level": getattr(self, "_isolation_level", "unknown"),
+            "engine_echo": getattr(self, "_echo", False),
         }
 
         try:
@@ -209,13 +202,13 @@ class DatabaseManager:
                 "size": pool.size(),
                 "overflow": pool.overflow(),
                 "connections": pool.checkedin() + pool.checkedout(),
-
                 # Конфигурация пула
-                "pool_config": pool_config
+                "pool_config": pool_config,
             }
         except Exception as e:
             logger.warning(f"Не удалось получить статистику пула соединений: {e}")
             return {}
+
     # ------------------
 
     # TODO move in repository
@@ -230,7 +223,7 @@ class DatabaseManager:
             await conn.commit()
             return result
 
-    async def fetch_one(self, query: str, **params) -> Optional[Any]:
+    async def fetch_one(self, query: str, **params) -> Any | None:
         """Выполнить запрос и вернуть одну запись"""
         if not self._engine:
             raise RuntimeError("Database not connected")
@@ -263,32 +256,12 @@ class DatabaseManager:
         return session
 
 
-# Упрощенная фабрика для быстрого использования
-class DatabaseManagerFactory:
-    """Фабрика для создания менеджеров БД"""
-
-    @staticmethod
-    def create_production(database_uri: str) -> DatabaseManager:
-        """Создать менеджер для production"""
-        return DatabaseManager(
-            database_uri,
-            echo=False,
-            pool_size=1,
-            max_overflow=5,
-            pool_timeout=30,
-            pool_recycle=3600,
-            pool_pre_ping=True
-        )
-
-    @staticmethod
-    def create_development(database_uri: str) -> DatabaseManager:
-        """Создать менеджер для development"""
-        return DatabaseManager(
-            database_uri,
-            echo=True,
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True
-        )
-
-db_connection_pool = DatabaseManagerFactory.create_production(str(settings.SQLALCHEMY_DATABASE_URI))
+db_connection_pool = DataBaseConnectionPool(
+    str(settings.SQLALCHEMY_DATABASE_URI),
+    echo=False,
+    pool_size=1,
+    max_overflow=5,
+    pool_timeout=30,
+    pool_recycle=3600,
+    pool_pre_ping=True,
+)
