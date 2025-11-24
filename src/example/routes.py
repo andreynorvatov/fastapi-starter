@@ -11,7 +11,9 @@ example_router = APIRouter()
 
 
 @example_router.post("/create", response_model=ExampleRead)
-async def create_example_endpoint(example: ExampleCreate, session: AsyncSession = Depends(get_db_connection)):
+async def create_example_endpoint(
+    example: ExampleCreate, session: AsyncSession = Depends(get_db_connection)
+) -> Example:
     # Проверка существования пользователя
     db_example = await get_example_by_email(session, example.email)
     if db_example:
@@ -21,16 +23,18 @@ async def create_example_endpoint(example: ExampleCreate, session: AsyncSession 
 
 
 @example_router.get("/get/{example_id}", response_model=ExampleRead)
-async def read_example(example_id: int, session: AsyncSession = Depends(get_db_connection)):
+async def read_example(example_id: int, session: AsyncSession = Depends(get_db_connection)) -> Example:
     example = await session.get(Example, example_id)
     if not example:
         raise HTTPException(status_code=404, detail="Example not found")
-    return example
+    return example.model_validate(example)
 
 
 @example_router.get("/get-all", response_model=list[ExampleRead])
-async def read_examples(skip: int = 0, limit: int = 100, session: AsyncSession = Depends(get_db_connection)):
+async def read_examples(
+    skip: int = 0, limit: int = 100, session: AsyncSession = Depends(get_db_connection)
+) -> list[ExampleRead]:
     statement = select(Example).offset(skip).limit(limit)
     result = await session.execute(statement)
     examples = result.scalars().all()
-    return examples
+    return [ExampleRead.model_validate(example) for example in examples]

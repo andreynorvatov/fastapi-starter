@@ -38,7 +38,8 @@ module = [                                  # Указывает, к каким 
     "pydantic.*",
     "fastapi.*",
     "httpx.*",
-    "pytest_asyncio.*"
+    "pytest_asyncio.*",
+    "pytz.*"
 ]
 ignore_missing_imports = true               # Игнорировать ошибки "import not found" или "cannot find implementation" для указанных модулей
 

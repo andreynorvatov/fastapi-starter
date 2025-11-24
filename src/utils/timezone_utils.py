@@ -10,7 +10,7 @@ def get_current_time() -> datetime:
 
 
 def localize_datetime(dt: datetime) -> datetime:
-    return project_timezone.localize(dt)
+    return project_timezone.localize(dt)  # type: ignore
 
 
 def convert_to_utc(dt: datetime) -> datetime:

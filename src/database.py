@@ -171,7 +171,7 @@ class DataBaseConnectionPool:
             await session.close()
 
     @property
-    async def engine_stats(self) -> dict:
+    async def engine_stats(self) -> dict[str, Any]:
         """
         Получить статистику пула соединений
         Example:
@@ -208,52 +208,6 @@ class DataBaseConnectionPool:
         except Exception as e:
             logger.warning(f"Не удалось получить статистику пула соединений: {e}")
             return {}
-
-    # ------------------
-
-    # TODO move in repository
-    async def execute_raw(self, query: str, **params) -> Any:
-        """Выполнить raw SQL запрос (для миграций и т.д.)"""
-        if not self._engine:
-            raise RuntimeError("Database not connected")
-
-        async with self._engine.connect() as conn:
-            # Используем text() для SQL
-            result = await conn.execute(text(query), params)
-            await conn.commit()
-            return result
-
-    async def fetch_one(self, query: str, **params) -> Any | None:
-        """Выполнить запрос и вернуть одну запись"""
-        if not self._engine:
-            raise RuntimeError("Database not connected")
-
-        async with self._engine.connect() as conn:
-            result = await conn.execute(text(query), params)
-            return result.first()
-
-    async def fetch_all(self, query: str, **params) -> list:
-        """Выполнить запрос и вернуть все записи"""
-        if not self._engine:
-            raise RuntimeError("Database not connected")
-
-        async with self._engine.connect() as conn:
-            result = await conn.execute(text(query), params)
-            return result.fetchall()
-
-    def create_session(self) -> AsyncSession:
-        """Создать сессию вручную (для транзакций)"""
-        if not self._session_factory:
-            raise RuntimeError("Database not connected. Call connect() first.")
-        return self._session_factory()
-
-    async def transactional(self, **kwargs) -> AsyncSession:
-        """Создать сессию с настройками транзакции"""
-        if not self._session_factory:
-            raise RuntimeError("Database not connected. Call connect() first.")
-
-        session = self._session_factory(**kwargs)
-        return session
 
 
 db_connection_pool = DataBaseConnectionPool(
