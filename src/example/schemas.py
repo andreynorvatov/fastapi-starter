@@ -1,6 +1,7 @@
-from sqlmodel import SQLModel
-from typing import Optional
 from datetime import datetime
+
+from sqlmodel import SQLModel
+
 
 # Для создания
 class ExampleCreate(SQLModel):
@@ -9,12 +10,14 @@ class ExampleCreate(SQLModel):
     full_name: str
     password: str
 
+
 # Для обновления
 class ExampleUpdate(SQLModel):
-    email: Optional[str] = None
-    name: Optional[str] = None
-    full_name: Optional[str] = None
-    is_active: Optional[bool] = None
+    email: str | None = None
+    name: str | None = None
+    full_name: str | None = None
+    is_active: bool | None = None
+
 
 # Для ответа
 class ExampleRead(SQLModel):
@@ -24,4 +27,4 @@ class ExampleRead(SQLModel):
     full_name: str
     is_active: bool
     created_at: datetime
-    updated_at: Optional[datetime]
+    updated_at: datetime | None
