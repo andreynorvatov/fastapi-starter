@@ -1,0 +1,40 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, create_engine, select
+from src.example.models import Example
+from src.example.schemas import ExampleCreate, ExampleRead, ExampleUpdate
+from src.example.crud import get_example_by_email, create_example
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.dependencies import get_db_connection
+
+example_router = APIRouter()
+
+@example_router.post("/examples/", response_model=ExampleRead)
+async def create_example_endpoint(
+        example: ExampleCreate,
+        session: AsyncSession = Depends(get_db_connection)
+):
+    # Проверка существования пользователя
+    db_example = await get_example_by_email(session, example.email)
+    if db_example:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    return await create_example(session, example)
+
+@example_router.get("/examples/{example_id}", response_model=ExampleRead)
+async def read_example(example_id: int, session: AsyncSession = Depends(get_db_connection)):
+    example = await session.get(Example, example_id)
+    if not example:
+        raise HTTPException(status_code=404, detail="Example not found")
+    return example
+
+@example_router.get("/examples/", response_model=list[ExampleRead])
+async def read_examples(
+        skip: int = 0,
+        limit: int = 100,
+        session: AsyncSession = Depends(get_db_connection)
+):
+    statement = select(Example).offset(skip).limit(limit)
+    result = await session.execute(statement)
+    examples = result.scalars().all()
+    return examples

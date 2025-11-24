@@ -45,35 +45,36 @@ granian --interface asgi --workers 1 --host 0.0.0.0 --port 8000 src.main:app
 ```shell
 sh run_app.sh
 ```
+## Миграции alembic
+### Локальная работа с alembic (если репозиторий спулен с git, шаг можно пропустить)
+<details>
+<summary>При первом запуске, если файла alembic.ini ещё нет</summary>
+запустить в терминале команду:
 
+```bash
+alembic init migrations
+# или
+alembic init -t async migrations
+```
+После этого будет создана папка с миграциями и конфигурационный файл для алембика.
+
+В alembic.ini задать адрес базы данных, в которую бдует происходить накат миграций.
+В папке с миграциями, файл env.py, изменения в блок:
+`from myapp import mymodel`
+</details>
+  
+  
+### Создание миграции (делается при любых изменениях моделей):  
+```bash  
+alembic revision --autogenerate -m"db create"
+```  
+### Накатывание финальной миграции  
+```bash  
+alembic upgrade heads
+```  
+### Откат миграции на 1 ревизию  
+```bash  
+alembic downgrade -1
+```
 ### Ссылки
 https://github.com/emmett-framework/granian
-
-## Backend
-
-1. [x] fastapi
-2. [x] granian
-3. [x] granian-reload
-4. [x] pytest
-5. [x] conftest.py асинхронный клиент
-6. [x] test health_check
-7. [x] ruff
-8. [x] mypy
-9. [x] config
-10. [x] .env_template
-11. [x] logging в приложении
-12. [ ] alembic
-13. [ ] ORM
-14. [ ] compose-example postgres
-15. [ ] conftest.py с БД 
-16. [ ] Фоновые асинхронные задачи
-17. [ ] Мониторинг
-18. [ ] Задать уровень логирования из конфига
-19. [ ] logging в midleware
-20. [ ] Таймзона
-21. [ ] Системная server-side rendering страница
-	1. [ ] Инфо о версии
-	2. [ ] Наименование
-	3. [ ] Схема БД
-	4. [ ] .env переменные
-22. 

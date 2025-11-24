@@ -130,7 +130,7 @@ class DataBaseConnectionPool:
         async with self._engine.connect() as conn:
             result = await conn.execute(text("SELECT 1"))
             data = result.scalar()
-            logger.warning(f"Data: {data}")
+            logger.debug(f"Результат запроса 'SELECT 1': {data}")
             if data != 1:
                 raise ConnectionError("Тестовый запрос 'SELECT 1' к базе данных не выполнен")
 
