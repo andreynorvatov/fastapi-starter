@@ -37,12 +37,17 @@ class Settings(BaseSettings):
         )
 
 
-_ROOT_DIRECTORY: Path = Path(__file__).resolve().parent.parent
-env_file_abs_path = Path.joinpath(_ROOT_DIRECTORY, ".env")
 
-if not Path.exists(env_file_abs_path):
-    logger.critical(f"Отсутствует файл: {env_file_abs_path}")
-    exit(-1)
 
-settings = Settings(_env_file=env_file_abs_path)  # type: ignore
+def init_settings(env_file_name: str = ".env") -> Settings:
+    _ROOT_DIRECTORY: Path = Path(__file__).resolve().parent.parent
+    env_file_abs_path = Path.joinpath(_ROOT_DIRECTORY, env_file_name)
+
+    if not Path.exists(env_file_abs_path):
+        logger.critical(f"Отсутствует файл: {env_file_abs_path}")
+        exit(-1)
+    return Settings(_env_file=env_file_abs_path)
+
+# settings = Settings(_env_file=env_file_abs_path)  # type: ignore
+settings = init_settings()  # type: ignore
 # print(settings.SQLALCHEMY_DATABASE_URI)

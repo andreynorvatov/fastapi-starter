@@ -27,6 +27,20 @@ dev = [
     "ruff>=0.14.5",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--color=yes",
+    "--strict-markers",
+    "--strict-config"
+]
+
 [tool.mypy]
 strict = true                               # Максимально строгая проверка
 explicit_package_bases = true               # Рассматривать только явно указанные директории как пакеты
