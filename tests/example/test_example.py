@@ -1,0 +1,247 @@
+"""
+Тесты для сервиса Example.
+
+Содержит тесты для:
+- CRUD операций (get_example_by_email, create_example)
+- API эндпоинтов (create, get, get-all)
+"""
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.example.crud import create_example, get_example_by_email
+from src.example.models import Example
+from src.example.schemas import ExampleCreate
+
+
+# =============================================================================
+# Тесты CRUD функций
+# =============================================================================
+
+
+class TestGetExampleByEmail:
+    """Тесты для функции get_example_by_email."""
+
+    @pytest.mark.asyncio
+    async def test_get_example_by_email_existing(self, db_session: AsyncSession) -> None:
+        """Тест поиска существующего пользователя по email."""
+        # Используем данные из conftest (test1@example.com)
+        result = await get_example_by_email(db_session, "test1@example.com")
+
+        assert result is not None
+        assert result.email == "test1@example.com"
+        assert result.name == "Test User 1"
+        assert result.is_active is True
+
+    @pytest.mark.asyncio
+    async def test_get_example_by_email_not_existing(self, db_session: AsyncSession) -> None:
+        """Тест поиска несуществующего пользователя по email."""
+        result = await get_example_by_email(db_session, "nonexistent@example.com")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_example_by_email_inactive_user(self, db_session: AsyncSession) -> None:
+        """Тест поиска неактивного пользователя по email."""
+        result = await get_example_by_email(db_session, "inactive@example.com")
+
+        assert result is not None
+        assert result.email == "inactive@example.com"
+        assert result.is_active is False
+
+
+class TestCreateExample:
+    """Тесты для функции create_example."""
+
+    @pytest.mark.asyncio
+    async def test_create_example_success(self, db_session: AsyncSession) -> None:
+        """Тест успешного создания пользователя."""
+        example_create = ExampleCreate(
+            email="new@example.com",
+            name="New User",
+            full_name="New Test User",
+            password="plain_password",
+        )
+
+        result = await create_example(db_session, example_create)
+
+        assert result.id is not None
+        assert result.email == "new@example.com"
+        assert result.name == "New User"
+        assert result.full_name == "New Test User"
+        assert result.hashed_password == "hashed_plain_password"
+        assert result.is_active is True
+
+    @pytest.mark.asyncio
+    async def test_create_example_persists_in_db(self, db_session: AsyncSession) -> None:
+        """Тест что созданный пользователь сохраняется в БД."""
+        example_create = ExampleCreate(
+            email="persist@example.com",
+            name="Persist User",
+            full_name="Persist Test User",
+            password="password123",
+        )
+
+        created = await create_example(db_session, example_create)
+
+        # Проверяем что запись можно найти по email
+        found = await get_example_by_email(db_session, "persist@example.com")
+        assert found is not None
+        assert found.id == created.id
+        assert found.email == created.email
+
+
+# =============================================================================
+# Тесты API эндпоинтов
+# =============================================================================
+
+
+class TestCreateExampleEndpoint:
+    """Тесты для POST /example/create эндпоинта."""
+
+    @pytest.mark.asyncio
+    async def test_create_example_endpoint_success(self, client: AsyncClient) -> None:
+        """Тест успешного создания пользователя через API."""
+        payload = {
+            "email": "api_new@example.com",
+            "name": "API User",
+            "full_name": "API Test User",
+            "password": "secure_password",
+        }
+
+        response = await client.post("/example/create", json=payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "api_new@example.com"
+        assert data["name"] == "API User"
+        assert data["full_name"] == "API Test User"
+        assert data["is_active"] is True
+        assert "id" in data
+        assert "created_at" in data
+
+    @pytest.mark.asyncio
+    async def test_create_example_endpoint_duplicate_email(self, client: AsyncClient) -> None:
+        """Тест создания пользователя с дублирующимся email."""
+        payload = {
+            "email": "test1@example.com",  # Уже существует из conftest
+            "name": "Duplicate User",
+            "full_name": "Duplicate Test User",
+            "password": "password",
+        }
+
+        response = await client.post("/example/create", json=payload)
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Email already registered"
+
+    @pytest.mark.asyncio
+    async def test_create_example_endpoint_missing_fields(self, client: AsyncClient) -> None:
+        """Тест создания пользователя с отсутствующими полями."""
+        payload = {
+            "email": "incomplete@example.com",
+            "name": "Incomplete User",
+            # Отсутствуют full_name и password
+        }
+
+        response = await client.post("/example/create", json=payload)
+
+        assert response.status_code == 422  # Validation error
+
+
+class TestReadExampleEndpoint:
+    """Тесты для GET /example/get/{example_id} эндпоинта."""
+
+    @pytest.mark.asyncio
+    async def test_read_example_existing(self, client: AsyncClient, example_data: dict) -> None:
+        """Тест получения существующего пользователя по ID."""
+        # Получаем ID из тестовых данных
+        user = example_data["active_user_1"]
+        user_id = user.id if hasattr(user, 'id') else user[0]
+
+        response = await client.get(f"/example/get/{user_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == user_id
+        assert data["email"] == "test1@example.com"
+
+    @pytest.mark.asyncio
+    async def test_read_example_not_found(self, client: AsyncClient) -> None:
+        """Тест получения несуществующего пользователя."""
+        response = await client.get("/example/get/99999")
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Example not found"
+
+    @pytest.mark.asyncio
+    async def test_read_example_invalid_id(self, client: AsyncClient) -> None:
+        """Тест получения пользователя с некорректным ID."""
+        response = await client.get("/example/get/invalid")
+
+        assert response.status_code == 422  # Validation error
+
+
+class TestReadExamplesEndpoint:
+    """Тесты для GET /example/get-all эндпоинта."""
+
+    @pytest.mark.asyncio
+    async def test_read_examples_default_params(self, client: AsyncClient) -> None:
+        """Тест получения списка пользователей с параметрами по умолчанию."""
+        response = await client.get("/example/get-all")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        # Должны быть 3 записи из conftest
+        assert len(data) == 3
+
+    @pytest.mark.asyncio
+    async def test_read_examples_with_pagination(self, client: AsyncClient) -> None:
+        """Тест получения списка пользователей с пагинацией."""
+        # Получаем только 2 записи
+        response = await client.get("/example/get-all?skip=0&limit=2")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    @pytest.mark.asyncio
+    async def test_read_examples_with_skip(self, client: AsyncClient) -> None:
+        """Тест получения списка пользователей с пропуском записей."""
+        # Пропускаем первую запись
+        response = await client.get("/example/get-all?skip=1&limit=10")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Должны получить 2 записи (пропустили 1 из 3)
+        assert len(data) == 2
+
+    @pytest.mark.asyncio
+    async def test_read_examples_empty_result(self, client: AsyncClient) -> None:
+        """Тест получения пустого списка при большом skip."""
+        response = await client.get("/example/get-all?skip=100&limit=10")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 0
+
+    @pytest.mark.asyncio
+    async def test_read_examples_response_structure(self, client: AsyncClient) -> None:
+        """Тест структуры ответа списка пользователей."""
+        response = await client.get("/example/get-all")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        for item in data:
+            assert "id" in item
+            assert "email" in item
+            assert "name" in item
+            assert "full_name" in item
+            assert "is_active" in item
+            assert "created_at" in item
+            assert "updated_at" in item
+            # hashed_password не должен быть в ответе
+            assert "hashed_password" not in item

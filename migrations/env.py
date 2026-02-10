@@ -1,6 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
+import nest_asyncio
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -83,7 +84,6 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-
     asyncio.run(run_async_migrations())
 
 

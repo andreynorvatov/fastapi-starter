@@ -18,11 +18,19 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str
 
+    # Настройки PostgreSQL
     POSTGRES_SERVER: str
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
+
+    # Настройки пула подключений к БД
+    DB_POOL_SIZE: int = 10  # Количество постоянных соединений в пуле
+    DB_MAX_OVERFLOW: int = 20  # Дополнительные соединения сверх pool_size
+    DB_POOL_TIMEOUT: float = 30.0  # Таймаут ожидания соединения (секунды)
+    DB_POOL_RECYCLE: int = 3600  # Время жизни соединения (секунды)
+    DB_POOL_PRE_PING: bool = True  # Проверка соединения перед использованием
 
     @computed_field  # type: ignore[prop-decorator]
     @property

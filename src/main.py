@@ -6,21 +6,17 @@ from fastapi.responses import ORJSONResponse
 
 from src.api import api_router
 from src.config import settings
-from src.database import db_connection_pool
 from src.logger import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa
     # Startup
-    await db_connection_pool.connect()
 
     logger.info("Application started")
-    engine_stats = await db_connection_pool.engine_stats
-    logger.info(engine_stats)
     yield
+
     # Shutdown
-    await db_connection_pool.disconnect()
     logger.info("Application stopped")
 
 
