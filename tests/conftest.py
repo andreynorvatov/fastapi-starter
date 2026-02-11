@@ -86,6 +86,45 @@ def create_test_database_sync() -> None:
                 cur.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
 
 
+def drop_all_tables() -> None:
+    """
+    Удаляет все таблицы в тестовой базе данных.
+    Использует параметры из Settings для подключения и определения схемы.
+    """
+    import psycopg
+
+    # Формируем DSN для подключения к тестовой базе данных
+    sync_dsn = PostgresDsn.build(
+        scheme="postgresql",
+        username=test_settings.POSTGRES_USER,
+        password=test_settings.POSTGRES_PASSWORD,
+        host=test_settings.POSTGRES_SERVER,
+        port=test_settings.POSTGRES_PORT,
+        path=test_settings.POSTGRES_DB,
+    )
+
+    # Используем схему из настроек (POSTGRES_USER)
+    schema = test_settings.POSTGRES_USER
+
+    with psycopg.connect(str(sync_dsn), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            # Получаем список всех таблиц в схеме пользователя
+            cur.execute(
+                """
+                SELECT tablename
+                FROM pg_tables
+                WHERE schemaname = %s
+                """,
+                (schema,)
+            )
+            tables = [row[0] for row in cur.fetchall()]
+
+            if tables:
+                # Удаляем все таблицы с указанием схемы
+                for table in tables:
+                    cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{table}" CASCADE')
+
+
 def run_alembic_migrations() -> None:
     """Запускает миграции alembic для тестовой базы данных."""
     alembic_cfg = Config("alembic.ini")
@@ -96,11 +135,8 @@ def run_alembic_migrations() -> None:
     )
     alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
 
-    # Сначала откатываем все миграции (если есть)
-    try:
-        command.downgrade(alembic_cfg, "base")
-    except Exception:
-        pass  # Игнорируем ошибки, если миграций нет
+    # Сначала удаляем все таблицы (если есть) для чистого запуска миграций
+    drop_all_tables()
 
     # Применяем миграции до последней версии
     command.upgrade(alembic_cfg, "head")
@@ -111,39 +147,6 @@ def run_alembic_migrations() -> None:
 # =============================================================================
 
 
-def rollback_alembic_migrations() -> None:
-    """Откатывает все миграции alembic в тестовой базе данных."""
-    import psycopg
-
-    alembic_cfg = Config("alembic.ini")
-
-    # Устанавливаем URL тестовой базы данных (синхронный драйвер psycopg)
-    sync_url = str(test_settings.SQLALCHEMY_DATABASE_URI).replace(
-        "postgresql+asyncpg", "postgresql+psycopg"
-    )
-    alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
-
-    # Откатываем все миграции
-    try:
-        command.downgrade(alembic_cfg, "base")
-    except Exception:
-        pass  # Игнорируем ошибки, если миграций нет
-
-    # Удаляем служебную таблицу alembic_version (она не удаляется при downgrade)
-    sync_dsn = PostgresDsn.build(
-        scheme="postgresql",
-        username=test_settings.POSTGRES_USER,
-        password=test_settings.POSTGRES_PASSWORD,
-        host=test_settings.POSTGRES_SERVER,
-        port=test_settings.POSTGRES_PORT,
-        path=test_settings.POSTGRES_DB,
-    )
-
-    with psycopg.connect(str(sync_dsn), autocommit=True) as conn:
-        with conn.cursor() as cur:
-            cur.execute("DROP TABLE IF EXISTS alembic_version")
-
-
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database() -> Generator[None, None, None]:
     """
@@ -152,7 +155,7 @@ def setup_test_database() -> Generator[None, None, None]:
     Выполняется один раз за сессию:
     1. Создает тестовую базу данных (синхронно)
     2. Запускает миграции alembic (синхронно)
-    3. После завершения всех тестов откатывает миграции (синхронно)
+    3. После завершения всех тестов удаляет все таблицы (синхронно)
     """
     # Создаем тестовую базу данных (синхронно)
     create_test_database_sync()
@@ -162,8 +165,8 @@ def setup_test_database() -> Generator[None, None, None]:
 
     yield
 
-    # Откатываем миграции после завершения всех тестов
-    rollback_alembic_migrations()
+    # Удаляем все таблицы после завершения всех тестов
+    drop_all_tables()
 
 
 async def clear_tables_async(session: AsyncSession) -> None:
