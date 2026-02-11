@@ -59,7 +59,7 @@ async def update_example(session: AsyncSession, example_id: int, example_update:
     db_example = await session.get(Example, example_id)
     if not db_example:
         raise HTTPException(status_code=404, detail="Example not found")
-    update_data = example_update.dict(exclude_unset=True)
+    update_data = example_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_example, key, value)
     session.add(db_example)
