@@ -116,6 +116,39 @@ def run_alembic_migrations() -> None:
 # =============================================================================
 
 
+def rollback_alembic_migrations() -> None:
+    """Откатывает все миграции alembic в тестовой базе данных."""
+    import psycopg
+
+    alembic_cfg = Config("alembic.ini")
+
+    # Устанавливаем URL тестовой базы данных (синхронный драйвер psycopg)
+    sync_url = str(test_settings.SQLALCHEMY_DATABASE_URI).replace(
+        "postgresql+asyncpg", "postgresql+psycopg"
+    )
+    alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
+
+    # Откатываем все миграции
+    try:
+        command.downgrade(alembic_cfg, "base")
+    except Exception:
+        pass  # Игнорируем ошибки, если миграций нет
+
+    # Удаляем служебную таблицу alembic_version (она не удаляется при downgrade)
+    sync_dsn = PostgresDsn.build(
+        scheme="postgresql",
+        username=test_settings.POSTGRES_USER,
+        password=test_settings.POSTGRES_PASSWORD,
+        host=test_settings.POSTGRES_SERVER,
+        port=test_settings.POSTGRES_PORT,
+        path=test_settings.POSTGRES_DB,
+    )
+
+    with psycopg.connect(str(sync_dsn), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS alembic_version")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database() -> Generator[None, None, None]:
     """
@@ -124,6 +157,7 @@ def setup_test_database() -> Generator[None, None, None]:
     Выполняется один раз за сессию:
     1. Создает тестовую базу данных (синхронно)
     2. Запускает миграции alembic (синхронно)
+    3. После завершения всех тестов откатывает миграции (синхронно)
     """
     # Создаем тестовую базу данных (синхронно)
     create_test_database_sync()
@@ -132,6 +166,9 @@ def setup_test_database() -> Generator[None, None, None]:
     run_alembic_migrations()
 
     yield
+
+    # Откатываем миграции после завершения всех тестов
+    rollback_alembic_migrations()
 
 
 async def clear_tables_async(session: AsyncSession) -> None:
