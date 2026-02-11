@@ -169,9 +169,26 @@ def setup_test_database() -> Generator[None, None, None]:
 async def clear_tables_async(session: AsyncSession) -> None:
     """
     Асинхронно очищает все таблицы в тестовой базе данных.
+    Динамически получает список всех таблиц в схеме пользователя и очищает их.
     """
-    await session.execute(text("TRUNCATE TABLE example RESTART IDENTITY CASCADE"))
-    await session.commit()
+    schema = test_settings.POSTGRES_USER
+    
+    # Получаем список всех таблиц в схеме пользователя
+    result = await session.execute(
+        text("""
+            SELECT tablename
+            FROM pg_tables
+            WHERE schemaname = :schema
+        """),
+        {"schema": schema}
+    )
+    tables = [row[0] for row in result.fetchall()]
+    
+    if tables:
+        # Формируем SQL для очистки всех таблиц с указанием схемы
+        tables_str = ", ".join(f'"{schema}"."{table}"' for table in tables)
+        await session.execute(text(f"TRUNCATE TABLE {tables_str} RESTART IDENTITY CASCADE"))
+        await session.commit()
 
 
 async def generate_test_data_async(session: AsyncSession) -> None:
