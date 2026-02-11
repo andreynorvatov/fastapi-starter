@@ -1,13 +1,3 @@
-"""
-Конфигурация pytest для асинхронных тестов.
-
-Содержит фикстуры для:
-- Подключения к тестовой базе данных
-- Удаления и создания таблиц через alembic (синхронно)
-- Генерации тестовых данных
-- Асинхронного HTTP-клиента
-"""
-
 import pytest
 from collections.abc import AsyncGenerator, Generator
 from alembic import command
@@ -20,7 +10,6 @@ from sqlalchemy.pool import NullPool
 
 from src.config import Settings
 from src.database import get_async_session
-from src.example.models import Example
 from src.main import app
 
 
@@ -194,40 +183,6 @@ async def clear_tables_async(session: AsyncSession) -> None:
         await session.commit()
 
 
-async def generate_test_data_async(session: AsyncSession) -> None:
-    """
-    Асинхронно генерирует тестовые данные.
-    """
-    examples = [
-        Example(
-            email="test1@example.com",
-            name="Test User 1",
-            full_name="Test User One",
-            hashed_password="hashed_password_1",
-            is_active=True,
-        ),
-        Example(
-            email="test2@example.com",
-            name="Test User 2",
-            full_name="Test User Two",
-            hashed_password="hashed_password_2",
-            is_active=True,
-        ),
-        Example(
-            email="inactive@example.com",
-            name="Inactive User",
-            full_name="Inactive Test User",
-            hashed_password="hashed_password_inactive",
-            is_active=False,
-        ),
-    ]
-    
-    for example in examples:
-        session.add(example)
-    
-    await session.commit()
-
-
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
@@ -258,9 +213,8 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     )
     
     async with async_session_factory() as session:
-        # Очищаем и генерируем тестовые данные перед каждым тестом
+        # Очищаем таблицы перед каждым тестом
         await clear_tables_async(session)
-        await generate_test_data_async(session)
         
         try:
             yield session
@@ -309,5 +263,3 @@ def test_settings_fixture() -> Settings:
         Settings: Настройки для тестов
     """
     return test_settings
-
-

@@ -24,9 +24,11 @@ class TestGetExampleByEmail:
     """Тесты для функции get_example_by_email."""
 
     @pytest.mark.asyncio
-    async def test_get_example_by_email_existing(self, db_session: AsyncSession) -> None:
+    async def test_get_example_by_email_existing(
+        self, db_session: AsyncSession, example_test_data: list[Example]
+    ) -> None:
         """Тест поиска существующего пользователя по email."""
-        # Используем данные из conftest (test1@example.com)
+        # Используем данные из example_test_data (test1@example.com)
         result = await get_example_by_email(db_session, "test1@example.com")
 
         assert result is not None
@@ -42,7 +44,9 @@ class TestGetExampleByEmail:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_example_by_email_inactive_user(self, db_session: AsyncSession) -> None:
+    async def test_get_example_by_email_inactive_user(
+        self, db_session: AsyncSession, example_test_data: list[Example]
+    ) -> None:
         """Тест поиска неактивного пользователя по email."""
         result = await get_example_by_email(db_session, "inactive@example.com")
 
@@ -122,10 +126,12 @@ class TestCreateExampleEndpoint:
         assert "created_at" in data
 
     @pytest.mark.asyncio
-    async def test_create_example_endpoint_duplicate_email(self, client: AsyncClient) -> None:
+    async def test_create_example_endpoint_duplicate_email(
+        self, client: AsyncClient, example_test_data: list[Example]
+    ) -> None:
         """Тест создания пользователя с дублирующимся email."""
         payload = {
-            "email": "test1@example.com",  # Уже существует из conftest
+            "email": "test1@example.com",  # Уже существует из example_test_data
             "name": "Duplicate User",
             "full_name": "Duplicate Test User",
             "password": "password",
@@ -154,7 +160,12 @@ class TestReadExampleEndpoint:
     """Тесты для GET /example/get/{example_id} эндпоинта."""
 
     @pytest.mark.asyncio
-    async def test_read_example_existing(self, client: AsyncClient, db_session: AsyncSession) -> None:
+    async def test_read_example_existing(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        example_test_data: list[Example],
+    ) -> None:
         """Тест получения существующего пользователя по ID."""
         # Получаем пользователя из БД через CRUD функцию
         user = await get_example_by_email(db_session, "test1@example.com")
@@ -188,18 +199,22 @@ class TestReadExamplesEndpoint:
     """Тесты для GET /example/get-all эндпоинта."""
 
     @pytest.mark.asyncio
-    async def test_read_examples_default_params(self, client: AsyncClient) -> None:
+    async def test_read_examples_default_params(
+        self, client: AsyncClient, example_test_data: list[Example]
+    ) -> None:
         """Тест получения списка пользователей с параметрами по умолчанию."""
         response = await client.get("/example/get-all")
 
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        # Должны быть 3 записи из conftest
+        # Должны быть 3 записи из example_test_data
         assert len(data) == 3
 
     @pytest.mark.asyncio
-    async def test_read_examples_with_pagination(self, client: AsyncClient) -> None:
+    async def test_read_examples_with_pagination(
+        self, client: AsyncClient, example_test_data: list[Example]
+    ) -> None:
         """Тест получения списка пользователей с пагинацией."""
         # Получаем только 2 записи
         response = await client.get("/example/get-all?skip=0&limit=2")
@@ -209,7 +224,9 @@ class TestReadExamplesEndpoint:
         assert len(data) == 2
 
     @pytest.mark.asyncio
-    async def test_read_examples_with_skip(self, client: AsyncClient) -> None:
+    async def test_read_examples_with_skip(
+        self, client: AsyncClient, example_test_data: list[Example]
+    ) -> None:
         """Тест получения списка пользователей с пропуском записей."""
         # Пропускаем первую запись
         response = await client.get("/example/get-all?skip=1&limit=10")
@@ -229,7 +246,9 @@ class TestReadExamplesEndpoint:
         assert len(data) == 0
 
     @pytest.mark.asyncio
-    async def test_read_examples_response_structure(self, client: AsyncClient) -> None:
+    async def test_read_examples_response_structure(
+        self, client: AsyncClient, example_test_data: list[Example]
+    ) -> None:
         """Тест структуры ответа списка пользователей."""
         response = await client.get("/example/get-all")
 
