@@ -1,11 +1,13 @@
 from datetime import datetime
 
+from pydantic import EmailStr
 from sqlmodel import SQLModel
 
 
 # Для создания
 class ExampleCreate(SQLModel):
-    email: str
+    """Схема для создания пользователя."""
+    email: EmailStr
     name: str
     full_name: str
     password: str
@@ -13,7 +15,8 @@ class ExampleCreate(SQLModel):
 
 # Для обновления
 class ExampleUpdate(SQLModel):
-    email: str | None = None
+    """Схема для обновления пользователя."""
+    email: EmailStr | None = None
     name: str | None = None
     full_name: str | None = None
     is_active: bool | None = None
@@ -21,8 +24,9 @@ class ExampleUpdate(SQLModel):
 
 # Для ответа
 class ExampleRead(SQLModel):
+    """Схема для чтения пользователя."""
     id: int
-    email: str
+    email: EmailStr
     name: str
     full_name: str
     is_active: bool

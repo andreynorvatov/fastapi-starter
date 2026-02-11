@@ -74,7 +74,8 @@ class TestCreateExample:
         assert result.email == "new@example.com"
         assert result.name == "New User"
         assert result.full_name == "New Test User"
-        assert result.hashed_password == "hashed_plain_password"
+        assert result.hashed_password != "plain_password"  # Пароль должен быть хеширован
+        assert result.hashed_password.startswith("$2b$")  # bcrypt hash format
         assert result.is_active is True
 
     @pytest.mark.asyncio
@@ -207,9 +208,13 @@ class TestReadExamplesEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
+        assert "items" in data
+        assert "total" in data
+        assert "skip" in data
+        assert "limit" in data
         # Должны быть 3 записи из example_test_data
-        assert len(data) == 3
+        assert len(data["items"]) == 3
+        assert data["total"] == 3
 
     @pytest.mark.asyncio
     async def test_read_examples_with_pagination(
@@ -221,7 +226,10 @@ class TestReadExamplesEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 2
+        assert len(data["items"]) == 2
+        assert data["total"] == 3
+        assert data["skip"] == 0
+        assert data["limit"] == 2
 
     @pytest.mark.asyncio
     async def test_read_examples_with_skip(
@@ -234,7 +242,9 @@ class TestReadExamplesEndpoint:
         assert response.status_code == 200
         data = response.json()
         # Должны получить 2 записи (пропустили 1 из 3)
-        assert len(data) == 2
+        assert len(data["items"]) == 2
+        assert data["total"] == 3
+        assert data["skip"] == 1
 
     @pytest.mark.asyncio
     async def test_read_examples_empty_result(self, client: AsyncClient) -> None:
@@ -243,7 +253,8 @@ class TestReadExamplesEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 0
+        assert len(data["items"]) == 0
+        assert data["total"] == 0
 
     @pytest.mark.asyncio
     async def test_read_examples_response_structure(
@@ -255,7 +266,7 @@ class TestReadExamplesEndpoint:
         assert response.status_code == 200
         data = response.json()
 
-        for item in data:
+        for item in data["items"]:
             assert "id" in item
             assert "email" in item
             assert "name" in item

@@ -11,6 +11,7 @@ async def get_db_connection() -> AsyncGenerator[AsyncConnection, None]:
     
     Используется как dependency injection в FastAPI для получения
     сырого соединения (AsyncConnection) вместо сессии (AsyncSession).
+    Соединение автоматически закрывается при выходе из async with.
     
     Yields:
         AsyncConnection: Асинхронное соединение SQLAlchemy
@@ -27,7 +28,4 @@ async def get_db_connection() -> AsyncGenerator[AsyncConnection, None]:
             return result.fetchall()
     """
     async with async_engine.connect() as connection:
-        try:
-            yield connection
-        finally:
-            await connection.close()
+        yield connection

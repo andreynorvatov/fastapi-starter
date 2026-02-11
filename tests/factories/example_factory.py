@@ -7,9 +7,13 @@
 
 from typing import Sequence
 
+from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.example.models import Example
+
+# Контекст для хеширования паролей
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class ExampleFactory:
@@ -26,7 +30,7 @@ class ExampleFactory:
         email: str,
         name: str,
         full_name: str,
-        hashed_password: str = "default_hashed_password",
+        password: str = "default_password",
         is_active: bool = True,
     ) -> Example:
         """
@@ -37,12 +41,13 @@ class ExampleFactory:
             email: Email пользователя
             name: Краткое имя
             full_name: Полное имя
-            hashed_password: Хэшированный пароль
+            password: Пароль (будет хеширован)
             is_active: Флаг активности
 
         Returns:
             Созданный экземпляр Example
         """
+        hashed_password = pwd_context.hash(password)
         example = Example(
             email=email,
             name=name,
@@ -72,11 +77,13 @@ class ExampleFactory:
         """
         examples = []
         for data in examples_data:
+            password = data.get("password", "default_password")
+            hashed_password = pwd_context.hash(password)
             example = Example(
                 email=data["email"],
                 name=data["name"],
                 full_name=data["full_name"],
-                hashed_password=data.get("hashed_password", "default_hashed_password"),
+                hashed_password=hashed_password,
                 is_active=data.get("is_active", True),
             )
             session.add(example)
@@ -114,7 +121,7 @@ class ExampleFactory:
             email=email,
             name=name,
             full_name=full_name,
-            hashed_password="hashed_active_password",
+            password="active_password",
             is_active=True,
         )
 
@@ -142,7 +149,7 @@ class ExampleFactory:
             email=email,
             name=name,
             full_name=full_name,
-            hashed_password="hashed_inactive_password",
+            password="inactive_password",
             is_active=False,
         )
 
@@ -162,21 +169,21 @@ class ExampleFactory:
                 "email": "test1@example.com",
                 "name": "Test User 1",
                 "full_name": "Test User One",
-                "hashed_password": "hashed_password_1",
+                "password": "password_1",
                 "is_active": True,
             },
             {
                 "email": "test2@example.com",
                 "name": "Test User 2",
                 "full_name": "Test User Two",
-                "hashed_password": "hashed_password_2",
+                "password": "password_2",
                 "is_active": True,
             },
             {
                 "email": "inactive@example.com",
                 "name": "Inactive User",
                 "full_name": "Inactive Test User",
-                "hashed_password": "hashed_password_inactive",
+                "password": "password_inactive",
                 "is_active": False,
             },
         ]

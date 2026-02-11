@@ -30,6 +30,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     Асинхронный генератор для получения сессии БД.
     
     Используется как dependency injection в FastAPI.
+    Сессия автоматически закрывается при выходе из async with.
     
     Yields:
         AsyncSession: Асинхронная сессия SQLAlchemy
@@ -40,7 +41,4 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
             ...
     """
     async with async_session_factory() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+        yield session

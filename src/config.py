@@ -8,6 +8,8 @@ from src.logger import logger
 
 
 class Settings(BaseSettings):
+    """Настройки приложения."""
+    
     model_config = SettingsConfigDict(
         env_file="../.env",
         env_ignore_empty=True,
@@ -31,10 +33,14 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: float = 30.0  # Таймаут ожидания соединения (секунды)
     DB_POOL_RECYCLE: int = 3600  # Время жизни соединения (секунды)
     DB_POOL_PRE_PING: bool = True  # Проверка соединения перед использованием
+    
+    # Настройки логирования
+    LOG_LEVEL: str = "INFO"  # Уровень логирования: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
+        """Вычисляемый URI для подключения к базе данных."""
         return PostgresDsn.build(
             scheme="postgresql+asyncpg",
             username=self.POSTGRES_USER,
@@ -45,17 +51,30 @@ class Settings(BaseSettings):
         )
 
 
-
-
 def init_settings(env_file_name: str = ".env") -> Settings:
+    """
+    Инициализирует настройки из файла окружения.
+    
+    Args:
+        env_file_name: Имя файла с переменными окружения
+        
+    Returns:
+        Settings: Объект с настройками приложения
+    """
+    from src.logger import set_log_level
+    
     _ROOT_DIRECTORY: Path = Path(__file__).resolve().parent.parent
     env_file_abs_path = Path.joinpath(_ROOT_DIRECTORY, env_file_name)
 
     if not Path.exists(env_file_abs_path):
         logger.critical(f"Отсутствует файл: {env_file_abs_path}")
         exit(-1)
-    return Settings(_env_file=env_file_abs_path)
+    
+    settings_obj = Settings(_env_file=env_file_abs_path)
+    # Применяем уровень логирования из настроек
+    set_log_level(settings_obj.LOG_LEVEL)
+    
+    return settings_obj
 
-# settings = Settings(_env_file=env_file_abs_path)  # type: ignore
+
 settings = init_settings()  # type: ignore
-# print(settings.SQLALCHEMY_DATABASE_URI)

@@ -3,9 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.database import get_async_session
-from src.example.crud import create_example, get_example_by_email
+from src.example.crud import create_example, get_example_by_email, get_examples_count
 from src.example.models import Example
 from src.example.schemas import ExampleCreate, ExampleRead
+from src.schemas import PaginatedResponse
 
 example_router = APIRouter()
 
@@ -14,7 +15,7 @@ example_router = APIRouter()
 async def create_example_endpoint(
     example: ExampleCreate, session: AsyncSession = Depends(get_async_session)
 ) -> Example:
-    # Проверка существования пользователя
+    """Создание нового пользователя."""
     db_example = await get_example_by_email(session, example.email)
     if db_example:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -24,17 +25,27 @@ async def create_example_endpoint(
 
 @example_router.get("/get/{example_id}", response_model=ExampleRead)
 async def read_example(example_id: int, session: AsyncSession = Depends(get_async_session)) -> Example:
+    """Получение пользователя по ID."""
     example = await session.get(Example, example_id)
     if not example:
         raise HTTPException(status_code=404, detail="Example not found")
-    return example.model_validate(example)
+    return example
 
 
-@example_router.get("/get-all", response_model=list[ExampleRead])
+@example_router.get("/get-all", response_model=PaginatedResponse[ExampleRead])
 async def read_examples(
     skip: int = 0, limit: int = 100, session: AsyncSession = Depends(get_async_session)
-) -> list[ExampleRead]:
+) -> PaginatedResponse[ExampleRead]:
+    """Получение списка пользователей с пагинацией."""
     statement = select(Example).offset(skip).limit(limit)
     result = await session.execute(statement)
     examples = result.scalars().all()
-    return [ExampleRead.model_validate(example) for example in examples]
+    
+    total = await get_examples_count(session)
+    
+    return PaginatedResponse(
+        items=[ExampleRead.model_validate(example) for example in examples],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )

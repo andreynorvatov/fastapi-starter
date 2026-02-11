@@ -4,6 +4,7 @@ from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from pydantic import PostgresDsn
+from psycopg import sql
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -67,12 +68,13 @@ def create_test_database_sync() -> None:
 
     with psycopg.connect(str(system_dsn), autocommit=True) as conn:
         with conn.cursor() as cur:
-            # Проверяем существование базы данных
-            cur.execute(f"SELECT 1 FROM pg_database WHERE datname = '{TEST_DB_NAME}'")
+            # Проверяем существование базы данных (безопасный запрос с параметрами)
+            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (TEST_DB_NAME,))
             exists = cur.fetchone() is not None
 
             if not exists:
-                cur.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
+                # Имя базы данных экранируется через идентификатор psycopg
+                cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(TEST_DB_NAME)))
 
 
 def drop_all_tables() -> None:
@@ -109,9 +111,13 @@ def drop_all_tables() -> None:
             tables = [row[0] for row in cur.fetchall()]
 
             if tables:
-                # Удаляем все таблицы с указанием схемы
+                # Удаляем все таблицы с безопасным экранированием имен
                 for table in tables:
-                    cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{table}" CASCADE')
+                    drop_query = sql.SQL("DROP TABLE IF EXISTS {}.{} CASCADE").format(
+                        sql.Identifier(schema),
+                        sql.Identifier(table)
+                    )
+                    cur.execute(drop_query)
 
 
 def run_alembic_migrations() -> None:
