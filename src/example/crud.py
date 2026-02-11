@@ -5,6 +5,7 @@ from sqlmodel import select
 
 from src.example.models import Example
 from src.example.schemas import ExampleCreate
+from fastapi import HTTPException
 
 # Контекст для хеширования паролей с использованием bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -44,3 +45,11 @@ async def create_example(session: AsyncSession, example_create: ExampleCreate) -
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверяет соответствие пароля и хеша."""
     return pwd_context.verify(plain_password, hashed_password)
+
+async def delete_example(session: AsyncSession, example_id: int) -> None:
+    """Удаляет запись по ID."""
+    example = await session.get(Example, example_id)
+    if not example:
+        raise HTTPException(status_code=404, detail="Example not found")
+    await session.delete(example)
+    await session.commit()

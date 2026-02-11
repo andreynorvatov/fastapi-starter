@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.database import get_async_session
-from src.example.crud import create_example, get_example_by_email, get_examples_count
+from src.example.crud import create_example, get_example_by_email, get_examples_count, delete_example
 from src.example.models import Example
 from src.example.schemas import ExampleCreate, ExampleRead
 from src.schemas import PaginatedResponse
@@ -44,8 +44,14 @@ async def read_examples(
     total = await get_examples_count(session)
     
     return PaginatedResponse(
-        items=[ExampleRead.model_validate(example) for example in examples],
-        total=total,
-        skip=skip,
-        limit=limit,
-    )
+            items=[ExampleRead.model_validate(example) for example in examples],
+            total=total,
+            skip=skip,
+            limit=limit,
+        )
+    
+@example_router.delete("/delete/{example_id}", status_code=204)
+async def delete_example_endpoint(example_id: int, session: AsyncSession = Depends(get_async_session)):
+    """Удаляет запись по ID."""
+    await delete_example(session, example_id)
+    return
