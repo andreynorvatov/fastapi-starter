@@ -8,12 +8,8 @@
 - Асинхронного HTTP-клиента
 """
 
-import asyncio
-from collections.abc import AsyncGenerator, Generator
-from typing import Any
-from unittest.mock import patch
-
 import pytest
+from collections.abc import AsyncGenerator, Generator
 from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
@@ -21,7 +17,6 @@ from pydantic import PostgresDsn
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
-from sqlmodel import SQLModel
 
 from src.config import Settings
 from src.database import get_async_session
@@ -296,26 +291,3 @@ def test_settings_fixture() -> Settings:
     return test_settings
 
 
-# =============================================================================
-# Дополнительные утилиты для тестов
-# =============================================================================
-
-
-@pytest.fixture
-async def example_data(db_session: AsyncSession) -> dict[str, Example]:
-    """
-    Фикстура, возвращающая словарь с тестовыми данными Example.
-
-    Returns:
-        dict: Словарь с предустановленными тестовыми записями
-    """
-    result = await db_session.execute(
-        text("SELECT * FROM example WHERE email LIKE '%@example.com'")
-    )
-    examples = result.fetchall()
-
-    return {
-        "active_user_1": examples[0] if len(examples) > 0 else None,
-        "active_user_2": examples[1] if len(examples) > 1 else None,
-        "inactive_user": examples[2] if len(examples) > 2 else None,
-    }

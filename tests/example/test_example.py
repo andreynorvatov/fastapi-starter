@@ -154,11 +154,12 @@ class TestReadExampleEndpoint:
     """Тесты для GET /example/get/{example_id} эндпоинта."""
 
     @pytest.mark.asyncio
-    async def test_read_example_existing(self, client: AsyncClient, example_data: dict) -> None:
+    async def test_read_example_existing(self, client: AsyncClient, db_session: AsyncSession) -> None:
         """Тест получения существующего пользователя по ID."""
-        # Получаем ID из тестовых данных
-        user = example_data["active_user_1"]
-        user_id = user.id if hasattr(user, 'id') else user[0]
+        # Получаем пользователя из БД через CRUD функцию
+        user = await get_example_by_email(db_session, "test1@example.com")
+        assert user is not None, "Тестовый пользователь должен существовать в БД"
+        user_id = user.id
 
         response = await client.get(f"/example/get/{user_id}")
 
