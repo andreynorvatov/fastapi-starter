@@ -3,7 +3,7 @@
 
 Содержит фикстуры для:
 - Подключения к тестовой базе данных
-- Удаления и создания таблиц через alembic
+- Удаления и создания таблиц через alembic (синхронно)
 - Генерации тестовых данных
 - Асинхронного HTTP-клиента
 """
@@ -13,7 +13,6 @@ from collections.abc import AsyncGenerator, Generator
 from typing import Any
 from unittest.mock import patch
 
-import nest_asyncio
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -21,6 +20,7 @@ from httpx import ASGITransport, AsyncClient
 from pydantic import PostgresDsn
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 from src.config import Settings
@@ -61,15 +61,19 @@ test_settings = get_test_settings()
 
 
 # =============================================================================
-# Управление базой данных
+# Управление базой данных (СИНХРОННЫЕ операции для подготовки)
 # =============================================================================
 
 
-async def create_test_database() -> None:
-    """Создает тестовую базу данных, если она не существует."""
-    # Подключаемся к postgres (системной БД) для создания тестовой БД
+def create_test_database_sync() -> None:
+    """
+    Синхронно создает тестовую базу данных, если она не существует.
+    Использует синхронное подключение к postgres.
+    """
+    import psycopg
+
     system_dsn = PostgresDsn.build(
-        scheme="postgresql+asyncpg",
+        scheme="postgresql",
         username=test_settings.POSTGRES_USER,
         password=test_settings.POSTGRES_PASSWORD,
         host=test_settings.POSTGRES_SERVER,
@@ -77,57 +81,25 @@ async def create_test_database() -> None:
         path="postgres",
     )
 
-    engine = create_async_engine(str(system_dsn), isolation_level="AUTOCOMMIT")
+    with psycopg.connect(str(system_dsn), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            # Проверяем существование базы данных
+            cur.execute(f"SELECT 1 FROM pg_database WHERE datname = '{TEST_DB_NAME}'")
+            exists = cur.fetchone() is not None
 
-    async with engine.connect() as conn:
-        # Проверяем существование базы данных
-        result = await conn.execute(
-            text(f"SELECT 1 FROM pg_database WHERE datname = '{TEST_DB_NAME}'")
-        )
-        exists = result.scalar() is not None
-
-        if not exists:
-            await conn.execute(text(f'CREATE DATABASE "{TEST_DB_NAME}"'))
-
-    await engine.dispose()
-
-
-async def drop_test_database() -> None:
-    """Удаляет тестовую базу данных."""
-    system_dsn = PostgresDsn.build(
-        scheme="postgresql+asyncpg",
-        username=test_settings.POSTGRES_USER,
-        password=test_settings.POSTGRES_PASSWORD,
-        host=test_settings.POSTGRES_SERVER,
-        port=test_settings.POSTGRES_PORT,
-        path="postgres",
-    )
-
-    engine = create_async_engine(str(system_dsn), isolation_level="AUTOCOMMIT")
-
-    async with engine.connect() as conn:
-        # Отключаем все активные подключения к тестовой БД
-        await conn.execute(
-            text(
-                f"""
-                SELECT pg_terminate_backend(pg_stat_activity.pid)
-                FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = '{TEST_DB_NAME}'
-                AND pid <> pg_backend_pid()
-                """
-            )
-        )
-        await conn.execute(text(f'DROP DATABASE IF EXISTS "{TEST_DB_NAME}"'))
-
-    await engine.dispose()
+            if not exists:
+                cur.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
 
 
 def run_alembic_migrations() -> None:
     """Запускает миграции alembic для тестовой базы данных."""
     alembic_cfg = Config("alembic.ini")
 
-    # Устанавливаем URL тестовой базы данных
-    alembic_cfg.set_main_option("sqlalchemy.url", str(test_settings.SQLALCHEMY_DATABASE_URI))
+    # Устанавливаем URL тестовой базы данных (синхронный драйвер psycopg)
+    sync_url = str(test_settings.SQLALCHEMY_DATABASE_URI).replace(
+        "postgresql+asyncpg", "postgresql+psycopg"
+    )
+    alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
 
     # Сначала откатываем все миграции (если есть)
     try:
@@ -139,145 +111,112 @@ def run_alembic_migrations() -> None:
     command.upgrade(alembic_cfg, "head")
 
 
-async def clear_tables() -> None:
-    """Очищает все таблицы в тестовой базе данных."""
-    engine = create_async_engine(str(test_settings.SQLALCHEMY_DATABASE_URI))
-
-    async with engine.begin() as conn:
-        # Получаем список всех таблиц
-        result = await conn.execute(
-            text(
-                """
-                SELECT tablename FROM pg_tables
-                WHERE schemaname = 'public'
-                """
-            )
-        )
-        tables = [row[0] for row in result.fetchall()]
-
-        # Очищаем все таблицы
-        for table in tables:
-            await conn.execute(text(f'TRUNCATE TABLE "{table}" CASCADE'))
-
-    await engine.dispose()
-
-
-# =============================================================================
-# Engine и Session для тестов
-# =============================================================================
-
-test_engine = create_async_engine(
-    str(test_settings.SQLALCHEMY_DATABASE_URI),
-    pool_size=5,
-    max_overflow=10,
-    echo=False,
-)
-
-test_async_session_factory = async_sessionmaker(
-    bind=test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
-
-
 # =============================================================================
 # Pytest Fixtures
 # =============================================================================
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    """Создает event loop для всей сессии тестов."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture(scope="session", autouse=True)
-async def setup_test_database() -> AsyncGenerator[None, None]:
+def setup_test_database() -> Generator[None, None, None]:
     """
-    Фикстура для настройки тестовой базы данных.
+    СИНХРОННАЯ фикстура для настройки тестовой базы данных.
 
     Выполняется один раз за сессию:
-    1. Создает тестовую базу данных
-    2. Запускает миграции alembic
-    3. После завершения всех тестов удаляет базу данных
+    1. Создает тестовую базу данных (синхронно)
+    2. Запускает миграции alembic (синхронно)
     """
-    # Создаем тестовую базу данных
-    await create_test_database()
+    # Создаем тестовую базу данных (синхронно)
+    create_test_database_sync()
 
-    # Запускаем миграции
+    # Запускаем миграции (синхронно)
     run_alembic_migrations()
 
     yield
 
-    # Удаляем тестовую базу данных после всех тестов
-    await drop_test_database()
 
-
-@pytest.fixture(autouse=True)
-async def reset_database() -> AsyncGenerator[None, None]:
+async def clear_tables_async(session: AsyncSession) -> None:
     """
-    Фикстура для очистки данных между тестами.
-
-    Выполняется перед каждым тестом:
-    - Очищает все таблицы
-    - Генерирует свежие тестовые данные
+    Асинхронно очищает все таблицы в тестовой базе данных.
     """
-    # Очищаем таблицы перед каждым тестом
-    await clear_tables()
-
-    # Генерируем тестовые данные
-    await generate_test_data()
-
-    yield
+    await session.execute(text("TRUNCATE TABLE example RESTART IDENTITY CASCADE"))
+    await session.commit()
 
 
-async def generate_test_data() -> None:
-    """Генерирует тестовые данные для всех таблиц."""
-    async with test_async_session_factory() as session:
-        # Создаем тестовые записи для Example
-        example1 = Example(
+async def generate_test_data_async(session: AsyncSession) -> None:
+    """
+    Асинхронно генерирует тестовые данные.
+    """
+    examples = [
+        Example(
             email="test1@example.com",
             name="Test User 1",
             full_name="Test User One",
             hashed_password="hashed_password_1",
             is_active=True,
-        )
-        example2 = Example(
+        ),
+        Example(
             email="test2@example.com",
             name="Test User 2",
             full_name="Test User Two",
             hashed_password="hashed_password_2",
             is_active=True,
-        )
-        example_inactive = Example(
+        ),
+        Example(
             email="inactive@example.com",
             name="Inactive User",
             full_name="Inactive Test User",
             hashed_password="hashed_password_inactive",
             is_active=False,
-        )
-
-        session.add_all([example1, example2, example_inactive])
-        await session.commit()
+        ),
+    ]
+    
+    for example in examples:
+        session.add(example)
+    
+    await session.commit()
 
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Фикстура для получения сессии базы данных.
+    
+    Engine создаётся внутри фикстуры, чтобы гарантировать
+    создание в правильном event loop (pytest-asyncio создаёт
+    новый loop для каждого теста при asyncio_mode="auto").
+    
+    Очищает данные перед тестом и после теста для изоляции.
 
     Yields:
         AsyncSession: Асинхронная сессия для работы с БД
     """
-    async with test_async_session_factory() as session:
+    # Создаём engine внутри фикстуры, в правильном event loop
+    engine = create_async_engine(
+        str(test_settings.SQLALCHEMY_DATABASE_URI),
+        poolclass=NullPool,  # Отключаем пулинг - каждое соединение создаётся в текущем loop
+        echo=False,
+    )
+    
+    async_session_factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+    
+    async with async_session_factory() as session:
+        # Очищаем и генерируем тестовые данные перед каждым тестом
+        await clear_tables_async(session)
+        await generate_test_data_async(session)
+        
         try:
             yield session
         finally:
+            # Очищаем данные после теста для изоляции
+            await clear_tables_async(session)
             await session.close()
+            await engine.dispose()
 
 
 @pytest.fixture

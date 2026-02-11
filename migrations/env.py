@@ -1,9 +1,8 @@
 import asyncio
 from logging.config import fileConfig
 
-import nest_asyncio
 from alembic import context
-from sqlalchemy import pool
+from sqlalchemy import pool, engine_from_config
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -30,7 +29,9 @@ target_metadata = SQLModel.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-config.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
+# Устанавливаем URL только если он не был установлен ранее (например, в тестах)
+if config.get_main_option("sqlalchemy.url") is None:
+    config.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
 
 
 def run_migrations_offline() -> None:
@@ -82,9 +83,40 @@ async def run_async_migrations() -> None:
     await connectable.dispose()
 
 
+def run_sync_migrations() -> None:
+    """Run migrations in synchronous mode using psycopg driver."""
+    from sqlalchemy import create_engine
+    
+    # Преобразуем async URL в sync URL для psycopg
+    url = config.get_main_option("sqlalchemy.url")
+    # Заменяем postgresql+asyncpg на postgresql+psycopg
+    sync_url = url.replace("postgresql+asyncpg", "postgresql+psycopg")
+    
+    connectable = create_engine(sync_url, poolclass=pool.NullPool)
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+    connectable.dispose()
+
+
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    asyncio.run(run_async_migrations())
+    # Проверяем, есть ли запущенный event loop
+    try:
+        asyncio.get_running_loop()
+        # Если есть запущенный loop, используем синхронный режим
+        # т.к. asyncio.run() нельзя вызвать внутри running loop
+        run_sync_migrations()
+    except RuntimeError:
+        # Нет запущенного event loop - можно использовать обычный async режим
+        asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():
