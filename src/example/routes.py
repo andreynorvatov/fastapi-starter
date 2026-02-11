@@ -3,9 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.database import get_async_session
-from src.example.crud import create_example, get_example_by_email, get_examples_count, delete_example
+from src.example.crud import create_example, get_example_by_email, get_examples_count, delete_example, update_example
 from src.example.models import Example
-from src.example.schemas import ExampleCreate, ExampleRead
+from src.example.schemas import ExampleCreate, ExampleRead, ExampleUpdate
 from src.schemas import PaginatedResponse
 
 example_router = APIRouter()
@@ -55,3 +55,9 @@ async def delete_example_endpoint(example_id: int, session: AsyncSession = Depen
     """Удаляет запись по ID."""
     await delete_example(session, example_id)
     return
+
+@example_router.put("/update/{example_id}", response_model=ExampleRead)
+async def update_example_endpoint(example_id: int, example_update: ExampleUpdate, session: AsyncSession = Depends(get_async_session)):
+    """Обновляет запись Example."""
+    db_example = await update_example(session, example_id, example_update)
+    return db_example

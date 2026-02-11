@@ -298,3 +298,44 @@ class TestDeleteExampleEndpoint:
         assert response.status_code == 404
         assert response.json()["detail"] == "Example not found"
 
+
+class TestUpdateExampleEndpoint:
+    """Тесты для PUT /example/update/{example_id} эндпоинта."""
+
+    @pytest.mark.asyncio
+    async def test_update_example_success(self, client: AsyncClient, db_session: AsyncSession, example_test_data: list[Example]):
+        # Обновляем первое Example
+        example_id = example_test_data[0].id
+        payload = {
+            "name": "Updated Name",
+            "full_name": "Updated Full Name",
+            "is_active": False
+        }
+        response = await client.put(f"/example/update/{example_id}", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == example_id
+        assert data["name"] == "Updated Name"
+        assert data["full_name"] == "Updated Full Name"
+        assert data["is_active"] is False
+        # Проверяем, что запись в БД обновилась
+        from src.example.crud import get_example_by_email
+        updated = await get_example_by_email(db_session, example_test_data[0].email)
+        assert updated is not None
+        assert updated.name == "Updated Name"
+        assert updated.full_name == "Updated Full Name"
+        assert updated.is_active is False
+
+    @pytest.mark.asyncio
+    async def test_update_example_not_found(self, client: AsyncClient):
+        payload = {"name": "Doesn't matter"}
+        response = await client.put("/example/update/99999", json=payload)
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Example not found"
+
+    @pytest.mark.asyncio
+    async def test_update_example_invalid_id(self, client: AsyncClient):
+        payload = {"name": "Invalid"}
+        response = await client.put("/example/update/invalid", json=payload)
+        assert response.status_code == 422
+

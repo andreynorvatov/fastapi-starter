@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.example.models import Example
-from src.example.schemas import ExampleCreate
+from src.example.schemas import ExampleCreate, ExampleUpdate
 from fastapi import HTTPException
 
 # Контекст для хеширования паролей с использованием bcrypt
@@ -53,3 +53,16 @@ async def delete_example(session: AsyncSession, example_id: int) -> None:
         raise HTTPException(status_code=404, detail="Example not found")
     await session.delete(example)
     await session.commit()
+
+async def update_example(session: AsyncSession, example_id: int, example_update: ExampleUpdate) -> Example:
+    """Обновляет запись Example."""
+    db_example = await session.get(Example, example_id)
+    if not db_example:
+        raise HTTPException(status_code=404, detail="Example not found")
+    update_data = example_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_example, key, value)
+    session.add(db_example)
+    await session.commit()
+    await session.refresh(db_example)
+    return db_example
