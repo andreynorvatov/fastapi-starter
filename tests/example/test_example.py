@@ -276,3 +276,25 @@ class TestReadExamplesEndpoint:
             assert "updated_at" in item
             # hashed_password не должен быть в ответе
             assert "hashed_password" not in item
+
+class TestDeleteExampleEndpoint:
+    """Тесты для DELETE /example/delete/{example_id} эндпоинта."""
+
+    @pytest.mark.asyncio
+    async def test_delete_example_success(self, client: AsyncClient, db_session: AsyncSession, example_test_data: list[Example]):
+        # Удаление первого Example
+        example_id = example_test_data[0].id
+        response = await client.delete(f"/example/delete/{example_id}")
+        assert response.status_code == 204
+
+        # Проверка удаления из БД
+        from src.example.crud import get_example_by_email
+        deleted = await get_example_by_email(db_session, example_test_data[0].email)
+        assert deleted is None
+
+    @pytest.mark.asyncio
+    async def test_delete_example_not_found(self, client: AsyncClient):
+        response = await client.delete("/example/delete/99999")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Example not found"
+
