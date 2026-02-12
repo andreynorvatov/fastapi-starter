@@ -8,7 +8,9 @@
     <style>
         body { padding-top: 64px; }
         .container { max-width: 960px; }
-        table { margin-top: 1rem; }
+        table { margin-top: 1rem; width: 50%; font-size: 0.9rem; }
+        .card { width: 50%; margin: auto; }
+        .card .card-content { font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -39,40 +41,52 @@
 
         <h2 class="header">Схема базы данных</h2>
         {% if tables %}
+        <div class="row">
             {% for table in tables %}
-                <div class="card">
-                    <div class="card-content">
-                        <span class="card-title">Таблица: {{ table.name }}</span>
-                        <table class="highlight">
-                            <thead>
-                                <tr><th>Колонка</th><th>Тип</th><th>Описание</th></tr>
-                            </thead>
-                            <tbody>
-                                {% for column in table.columns %}
-                                    <tr><td>{{ column[0] }}</td><td>{{ column[1] }}</td><td>{{ column[2] if column|length > 2 else '' }}</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        {% if table.foreign_keys %}
-                            <h4>Связи (Foreign Keys)</h4>
-                            <table class="highlight">
-                                <thead>
-                                    <tr><th>Колонка</th><th>Таблица</th><th>Колонка</th></tr>
-                                </thead>
-                                <tbody>
-                                    {% for fk in table.foreign_keys %}
-                                        <tr><td>{{ fk.column }}</td><td>{{ fk.referred_table }}</td><td>{{ fk.referred_column }}</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        {% endif %}
-                    </div>
+                <div class="col s6">
+                    <ul class="collapsible">
+                        <li>
+                            <div class="collapsible-header"><span class="card-title">Таблица: {{ table.name }}</span></div>
+                            <div class="collapsible-body">
+                                <table class="highlight">
+                                    <thead>
+                                        <tr><th>Колонка</th><th>Тип</th><th>Описание</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for column in table.columns %}
+                                            <tr><td>{{ column[0] }}</td><td>{{ column[1] }}</td><td>{{ column[2] if column|length > 2 else '' }}</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% if table.foreign_keys %}
+                                    <h6>Связи (Foreign Keys)</h6>
+                                    <table class="highlight">
+                                        <thead>
+                                            <tr><th>Колонка</th><th>Таблица</th><th>Колонка</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for fk in table.foreign_keys %}
+                                                <tr><td>{{ fk.column }}</td><td>{{ fk.referred_table }}</td><td>{{ fk.referred_column }}</td></tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                {% endif %}
+                            </div>
+                        </li>
+                    </ul>
                 </div>
             {% endfor %}
+        </div>
         {% else %}
             <p>Схема базы данных не найдена.</p>
         {% endif %}
     </main>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var elems = document.querySelectorAll('.collapsible');
+            M.Collapsible.init(elems, {});
+        });
+    </script>
 </body>
 </html>
