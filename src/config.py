@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Настройки логирования
     LOG_LEVEL: str = "INFO"  # Уровень логирования: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
+    # Настройки файлового хранилища
+    FILES_STORAGE_PATH: Path = Path("./storage/files")  # Путь к корневой папке хранилища
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:

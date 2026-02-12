@@ -35,6 +35,135 @@ uv run pytest -vv
 ```shell
 sh run_tests.sh
 ```
+
+## Сервис файлового хранилища
+
+### Настройка
+
+В файле `.env` добавьте переменную:
+
+```env
+FILES_STORAGE_PATH=./storage/files
+```
+
+По умолчанию файлы хранятся в папке `./storage/files` относительно корня проекта.
+
+### Структура хранилища
+
+Файлы хранятся в структуре:
+
+```
+{storage_root}/{prefix}/{uuid}
+```
+
+где:
+- `storage_root` - корневая папка хранилища (из `FILES_STORAGE_PATH`)
+- `prefix` - первые 2 символа UUID (без дефисов)
+- `uuid` - строковое представление UUID файла
+
+Пример:
+```
+storage/files/
+├── 12/
+│   └── 12345678-1234-5678-1234-567812345678
+├── ab/
+│   └── abc123def-456-789-012-3456789abcde
+└── ff/
+    └── ffffffff-ffff-ffff-ffff-ffffffffffff
+```
+
+### Использование
+
+#### Инициализация сервиса
+
+```python
+from src.file_storage.service import FileStorageService, get_file_storage_service
+
+# Создание экземпляра (обычно не требуется, используйте dependency injection)
+storage = FileStorageService()
+
+# Или получение глобального экземпляра через DI
+storage = get_file_storage_service()
+```
+
+#### Сохранение файла
+
+```python
+import uuid
+
+# Сохранить файл с автоматической генерацией UUID
+content = b"Hello, World!"
+file_uuid = storage.save_file(content)
+# file_uuid - объект uuid.UUID
+
+# Сохранить файл с указанным UUID
+specific_uuid = uuid.UUID("12345678-1234-5678-1234-567812345678")
+file_uuid = storage.save_file(content, file_uuid=specific_uuid)
+```
+
+#### Получение файла
+
+```python
+# Получить путь к файлу
+file_path = storage.get_file_path(file_uuid)
+
+# Получить содержимое файла
+content = storage.get_file_content(file_uuid)
+```
+
+#### Проверка существования
+
+```python
+if storage.file_exists(file_uuid):
+    print("Файл существует")
+```
+
+#### Удаление файла
+
+```python
+success = storage.delete_file(file_uuid)
+if success:
+    print("Файл удален")
+```
+
+#### Список всех файлов
+
+```python
+files = storage.list_files()
+for file_info in files:
+    print(f"UUID: {file_info['uuid']}")
+    print(f"Path: {file_info['path']}")
+    print(f"Size: {file_info['size']} bytes")
+    print(f"Prefix: {file_info['prefix']}")
+```
+
+### Использование в FastAPI
+
+```python
+from fastapi import APIRouter, Depends, UploadFile
+from src.file_storage.service import get_file_storage_service, FileStorageService
+
+router = APIRouter()
+
+@router.post("/upload")
+async def upload_file(
+    file: UploadFile,
+    storage: FileStorageService = Depends(get_file_storage_service)
+) -> dict:
+    content = await file.read()
+    file_uuid = storage.save_file(content)
+    return {"uuid": str(file_uuid)}
+
+@router.get("/download/{file_uuid}")
+async def download_file(
+    file_uuid: str,
+    storage: FileStorageService = Depends(get_file_storage_service)
+):
+    import uuid
+    uid = uuid.UUID(file_uuid)
+    file_path = storage.get_file_path(uid)
+    return FileResponse(file_path, filename=file_uuid)
+```
 ##  ASGI-сервер granian
 
 ### Запуск приложения
