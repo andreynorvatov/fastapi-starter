@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ service_name }}</title>
+    <style>
+        body {font-family: Arial, sans-serif; margin: 2rem;}
+        table {border-collapse: collapse; width: 100%; margin-top: 1rem;}
+        th, td {border: 1px solid #ddd; padding: 8px; text-align: left;}
+        th {background-color: #f2f2f2;}
+    </style>
+</head>
+<body>
+    <h1>Добро пожаловать в {{ service_name }}</h1>
+    <p>Это домашняя страница сервиса, отображающая общую информацию и схему базы данных.</p>
+
+    <h2>Схема базы данных</h2>
+    {% if tables %}
+        {% for table in tables %}
+            <h3>Таблица: {{ table.name }}</h3>
+            <table>
+                <thead>
+                    <tr><th>Колонка</th><th>Тип</th></tr>
+                </thead>
+                <tbody>
+                    {% for column in table.columns %}
+                        <tr><td>{{ column[0] }}</td><td>{{ column[1] }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    {% else %}
+        <p>Схема базы данных не найдена.</p>
+    {% endif %}
+</body>
+</html>
