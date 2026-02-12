@@ -23,7 +23,7 @@ class File(SQLModel, TimestampMixin, UUIDMixin, table=True):
         description="Оригинальное имя файла при загрузке",
     )
     file_path: str = Field(
-        sa_column_kwargs={"type_": Text},
+        sa_type=Text,
         description="Относительный путь к файлу от корня хранилища (например: 'ab/cd/uuid')",
     )
     file_size: int = Field(

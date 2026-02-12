@@ -19,6 +19,7 @@ class FileCreate(SQLModel):
     file_size: int = Field(ge=0)
     mime_type: str | None = None
     extension: str | None = None
+    is_active: bool = Field(default=True, description="Флаг активного файла")
 
 
 class FileUpdate(SQLModel):

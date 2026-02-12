@@ -1,21 +1,95 @@
 # Python-generated files
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
 wheels/
-*.egg-info
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # Virtual environments
 .venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 .env*
+.envrc
+.python-version
 
-# PyCharm
+# IDE/Editor files
 .idea/
+.vscode/
 *.iws
 *.iml
 *.ipr
+*.swp
+*.swo
+*~
+.DS_Store
 
-# Log files
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Coverage reports
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+test-results/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# Logs
 *.log
 logs/
+
+# Database
+*.sqlite
+*.db
+
+# FastAPI/ASGI
+.asgi.py
+
+# Storage (uploaded files - keep only .gitkeep)
+storage/files/
+!storage/.gitkeep
+
+# Migration conflicts
+alembic/versions/*_conflict_*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
