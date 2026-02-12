@@ -1,4 +1,4 @@
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -8,7 +8,7 @@ from src.example.schemas import ExampleCreate, ExampleUpdate
 from fastapi import HTTPException
 
 # Контекст для хеширования паролей с использованием bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt used directly, no CryptContext needed
 
 
 async def get_example_by_email(session: AsyncSession, email: str) -> Example | None:
@@ -27,7 +27,7 @@ async def get_examples_count(session: AsyncSession) -> int:
 
 async def create_example(session: AsyncSession, example_create: ExampleCreate) -> Example:
     """Создает нового пользователя с хешированным паролем."""
-    hashed_password = pwd_context.hash(example_create.password)
+    hashed_password = bcrypt.hashpw(example_create.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     example = Example(
         email=example_create.email,
@@ -44,7 +44,7 @@ async def create_example(session: AsyncSession, example_create: ExampleCreate) -
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверяет соответствие пароля и хеша."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 async def delete_example(session: AsyncSession, example_id: int) -> None:
     """Удаляет запись по ID."""
