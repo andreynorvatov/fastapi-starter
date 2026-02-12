@@ -1,25 +1,79 @@
-"""Конфигурация логирования приложения."""
+"""Конфигурация логирования приложения в формате JSON для ELK."""
 
+import json
 import logging
 import sys
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any, Dict
 
 LOG_FILE_PATH = Path("logs/app.log")
-LOG_FORMAT = (
-    "%(asctime)s %(levelname)s - [%(module)s - %(funcName)s - %(lineno)d] - "
-    "[%(processName)s (pid=%(process)d) - %(threadName)s (tid=%(thread)d)] - %(message)s"
-)
+
+
+class JsonFormatter(logging.Formatter):
+    """Форматтер для вывода логов в JSON формате, совместимом с ELK."""
+    
+    def __init__(self, **kwargs: Any) -> None:
+        """Инициализация JSON форматтера."""
+        super().__init__()
+        self.default_fields = kwargs
+    
+    def format(self, record: logging.LogRecord) -> str:
+        """Форматирует запись лога в JSON."""
+        # Базовые поля лога
+        log_object: Dict[str, Any] = {
+            "timestamp": datetime.utcfromtimestamp(record.created).isoformat() + "Z",
+            "level": record.levelname,
+            "level_num": record.levelno,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+            "process": {
+                "name": record.processName,
+                "id": record.process,
+            },
+            "thread": {
+                "name": record.threadName,
+                "id": record.thread,
+            },
+        }
+        
+        # Добавляем дополнительные поля из record
+        for key, value in self.default_fields.items():
+            log_object[key] = value
+        
+        # Добавляем исключение, если есть
+        if record.exc_info:
+            log_object["exception"] = self.formatException(record.exc_info)
+        if record.stack_info:
+            log_object["stack_info"] = self.formatStack(record.stack_info)
+        
+        # Добавляем любые дополнительные атрибуты, добавленные через LoggerAdapter
+        for key, value in record.__dict__.items():
+            if key not in (
+                "name", "msg", "args", "created", "filename", "funcName",
+                "levelname", "levelno", "lineno", "module", "msecs",
+                "message", "pathname", "process", "processName",
+                "relativeCreated", "thread", "threadName",
+                "exc_info", "exc_text", "stack_info", "taskName",
+            ):
+                log_object[key] = value
+        
+        return json.dumps(log_object, ensure_ascii=False)
+
 
 # Создаем директорию для логов, если она не существует
 LOG_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger()
 
-formatter = logging.Formatter(fmt=LOG_FORMAT)
+json_formatter = JsonFormatter()
 
 stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setFormatter(formatter)
+stream_handler.setFormatter(json_formatter)
 
 file_handler = RotatingFileHandler(
     LOG_FILE_PATH,
@@ -28,7 +82,7 @@ file_handler = RotatingFileHandler(
     maxBytes=10 * 1024 * 1024,  # 10Mb
     backupCount=3,
 )
-file_handler.setFormatter(formatter)
+file_handler.setFormatter(json_formatter)
 
 logger.handlers = [stream_handler, file_handler]
 
