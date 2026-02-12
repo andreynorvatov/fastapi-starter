@@ -498,3 +498,107 @@ class TestDeleteFile:
         response = await client_with_storage.delete("/files/invalid-uuid")
 
         assert response.status_code == 400
+
+
+class TestHardDeleteFile:
+    """Тесты для DELETE /files/{file_uuid}/hard эндпоинта."""
+
+    @pytest.mark.asyncio
+    async def test_hard_delete_file_success(
+        self,
+        client_with_storage: AsyncClient,
+        db_session: AsyncSession,
+        test_storage_service: FileStorageService,
+    ) -> None:
+        """Тест успешного жесткого удаления файла."""
+        # Создаём файл
+        file_content = b"To hard delete"
+        file_uuid = test_storage_service.save_file(file_content)
+
+        # Создаём запись в БД с тем же UUID
+        uuid_str = str(file_uuid).replace("-", "")
+        prefix1 = uuid_str[:2]
+        prefix2 = uuid_str[2:4]
+        relative_path = f"{prefix1}/{prefix2}/{file_uuid}"
+
+        file_create = FileCreate(
+            original_filename="hard_delete_me.txt",
+            file_path=relative_path,
+            file_size=len(file_content),
+            is_active=True,
+        )
+        await create_file(db_session, file_create, file_id=file_uuid)
+
+        # Жестко удаляем
+        response = await client_with_storage.delete(f"/files/{file_uuid}/hard")
+
+        assert response.status_code == 204
+
+        # Проверяем, что файл удалён с диска
+        assert not test_storage_service.file_exists(file_uuid)
+
+        # Проверяем, что запись в БД полностью удалена
+        db_file = await db_session.get(File, file_uuid)
+        assert db_file is None
+
+    @pytest.mark.asyncio
+    async def test_hard_delete_file_not_found(
+        self, client_with_storage: AsyncClient
+    ) -> None:
+        """Тест жесткого удаления несуществующего файла."""
+        non_existent_uuid = uuid.uuid4()
+
+        response = await client_with_storage.delete(f"/files/{non_existent_uuid}/hard")
+
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_hard_delete_file_invalid_uuid(
+        self, client_with_storage: AsyncClient
+    ) -> None:
+        """Тест жесткого удаления с некорректным UUID."""
+        response = await client_with_storage.delete("/files/invalid-uuid/hard")
+
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_hard_delete_file_removes_from_db_and_disk(
+        self,
+        client_with_storage: AsyncClient,
+        db_session: AsyncSession,
+        test_storage_service: FileStorageService,
+    ) -> None:
+        """Тест что жесткое удаление удаляет и с диска и из БД."""
+        # Создаём файл
+        file_content = b"Complete deletion test"
+        file_uuid = test_storage_service.save_file(file_content)
+
+        # Создаём запись в БД
+        uuid_str = str(file_uuid).replace("-", "")
+        prefix1 = uuid_str[:2]
+        prefix2 = uuid_str[2:4]
+        relative_path = f"{prefix1}/{prefix2}/{file_uuid}"
+
+        file_create = FileCreate(
+            original_filename="complete_delete.txt",
+            file_path=relative_path,
+            file_size=len(file_content),
+            is_active=True,
+        )
+        await create_file(db_session, file_create, file_id=file_uuid)
+
+        # Проверяем что файл существует
+        assert test_storage_service.file_exists(file_uuid)
+        db_file = await db_session.get(File, file_uuid)
+        assert db_file is not None
+
+        # Жестко удаляем
+        response = await client_with_storage.delete(f"/files/{file_uuid}/hard")
+        assert response.status_code == 204
+
+        # Проверяем что файл удален с диска
+        assert not test_storage_service.file_exists(file_uuid)
+
+        # Проверяем что запись удалена из БД
+        db_file_after = await db_session.get(File, file_uuid)
+        assert db_file_after is None

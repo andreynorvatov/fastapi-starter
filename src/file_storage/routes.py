@@ -14,6 +14,7 @@ from src.file_storage.crud import (
     create_file,
     get_file_by_uuid,
     get_files,
+    hard_delete_file,
     soft_delete_file,
     update_file,
 )
@@ -287,4 +288,48 @@ async def delete_file(
         raise HTTPException(status_code=404, detail="Файл не найден в базе данных")
 
     logger.info(f"Файл мягко удален: {file_uuid} (is_active=False)")
+    return None
+
+
+@file_storage_router.delete("/{file_uuid}/hard", status_code=204)
+async def hard_delete_file_endpoint(
+    file_uuid,
+    session: AsyncSession = Depends(get_async_session),
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+) -> None:
+    """Жестко удаляет файл (из базы данных и с диска).
+
+    Файл полностью удаляется из базы данных и с диска.
+
+    Args:
+        file_uuid: UUID файла
+        session: Сессия БД
+        storage_service: Сервис файлового хранилища
+
+    Raises:
+        HTTPException: 404 если файл не найден
+    """
+    import uuid as uuid_module
+
+    try:
+        file_uuid_obj = uuid_module.UUID(str(file_uuid))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректный UUID")
+
+    # Проверяем существование файла в БД
+    db_file = await get_file_by_uuid(session, file_uuid_obj)
+    if not db_file:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+    # Удаляем файл с диска
+    deleted = storage_service.delete_file(file_uuid_obj)
+    if not deleted:
+        logger.warning(f"Файл не найден на диске при удалении: UUID {file_uuid}")
+
+    # Жестко удаляем запись из БД
+    hard_deleted = await hard_delete_file(session, file_uuid_obj)
+    if not hard_deleted:
+        raise HTTPException(status_code=404, detail="Файл не найден в базе данных")
+
+    logger.info(f"Файл жестко удален: {file_uuid} (запись удалена из БД)")
     return None
