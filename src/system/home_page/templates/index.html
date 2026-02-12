@@ -3,34 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ service_name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
     <style>
-        body {font-family: Arial, sans-serif; margin: 2rem;}
-        table {border-collapse: collapse; width: 100%; margin-top: 1rem;}
-        th, td {border: 1px solid #ddd; padding: 8px; text-align: left;}
-        th {background-color: #f2f2f2;}
+        body { padding-top: 64px; }
+        .container { max-width: 960px; }
+        table { margin-top: 1rem; }
     </style>
 </head>
 <body>
-    <h1>Добро пожаловать в {{ service_name }}</h1>
-    <p>Это домашняя страница сервиса, отображающая общую информацию и схему базы данных.</p>
+    <nav class="blue darken-3">
+        <div class="nav-wrapper container">
+            <a href="#" class="brand-logo">{{ service_name }}</a>
+        </div>
+    </nav>
+    <div class="container" style="margin-top: 1rem;">
+    </div>
+    <main class="container">
+        <h1 class="header">Добро пожаловать в {{ service_name }}</h1>
+        <a href="/docs" class="btn">Swagger UI</a>
+        <a href="https://github.com/andreynorvatov/fastapi-starter" class="btn" target="_blank">GitHub</a>
+        <a href="https://frontend-placeholder.example.com" class="btn" target="_blank">Frontend</a>
+        <p>Это домашняя страница сервиса, отображающая общую информацию и схему базы данных.</p>
+        <h2 class="header">Настройки приложения</h2>
+        <ul>
+            <li>Проект: {{ settings.PROJECT_NAME }}</li>
+            <li>Окружение: {{ settings.ENVIRONMENT }}</li>
+            <li>База данных: {{ settings.SQLALCHEMY_DATABASE_URI }}</li>
+            <li>Размер пула: {{ settings.DB_POOL_SIZE }}</li>
+            <li>Максимальный переполняющий пул: {{ settings.DB_MAX_OVERFLOW }}</li>
+            <li>Таймаут пула: {{ settings.DB_POOL_TIMEOUT }}</li>
+            <li>Переработка пула: {{ settings.DB_POOL_RECYCLE }}</li>
+            <li>Проверка соединения: {{ settings.DB_POOL_PRE_PING }}</li>
+        </ul>
 
-    <h2>Схема базы данных</h2>
-    {% if tables %}
-        {% for table in tables %}
-            <h3>Таблица: {{ table.name }}</h3>
-            <table>
-                <thead>
-                    <tr><th>Колонка</th><th>Тип</th></tr>
-                </thead>
-                <tbody>
-                    {% for column in table.columns %}
-                        <tr><td>{{ column[0] }}</td><td>{{ column[1] }}</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% endfor %}
-    {% else %}
-        <p>Схема базы данных не найдена.</p>
-    {% endif %}
+        <h2 class="header">Схема базы данных</h2>
+        {% if tables %}
+            {% for table in tables %}
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">Таблица: {{ table.name }}</span>
+                        <table class="highlight">
+                            <thead>
+                                <tr><th>Колонка</th><th>Тип</th><th>Описание</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for column in table.columns %}
+                                    <tr><td>{{ column[0] }}</td><td>{{ column[1] }}</td><td>{{ column[2] if column|length > 2 else '' }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if table.foreign_keys %}
+                            <h4>Связи (Foreign Keys)</h4>
+                            <table class="highlight">
+                                <thead>
+                                    <tr><th>Колонка</th><th>Таблица</th><th>Колонка</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for fk in table.foreign_keys %}
+                                        <tr><td>{{ fk.column }}</td><td>{{ fk.referred_table }}</td><td>{{ fk.referred_column }}</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Схема базы данных не найдена.</p>
+        {% endif %}
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 </body>
 </html>
