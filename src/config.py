@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
     PROJECT_NAME: str
+    APP_VERSION: str = "0.1"
 
     # Настройки PostgreSQL
     POSTGRES_SERVER: str

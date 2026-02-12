@@ -20,11 +20,10 @@
     <div class="container" style="margin-top: 1rem;">
     </div>
     <main class="container">
-        <h1 class="header">Добро пожаловать в {{ service_name }}</h1>
         <a href="/docs" class="btn">Swagger UI</a>
         <a href="https://github.com/andreynorvatov/fastapi-starter" class="btn" target="_blank">GitHub</a>
         <a href="https://frontend-placeholder.example.com" class="btn" target="_blank">Frontend</a>
-        <p>Это домашняя страница сервиса, отображающая общую информацию и схему базы данных.</p>
+
         <h2 class="header">Настройки приложения</h2>
         <ul>
             <li>Проект: {{ settings.PROJECT_NAME }}</li>
@@ -35,6 +34,7 @@
             <li>Таймаут пула: {{ settings.DB_POOL_TIMEOUT }}</li>
             <li>Переработка пула: {{ settings.DB_POOL_RECYCLE }}</li>
             <li>Проверка соединения: {{ settings.DB_POOL_PRE_PING }}</li>
+            <li>Версия: {{ settings.APP_VERSION }}</li>
         </ul>
 
         <h2 class="header">Схема базы данных</h2>
