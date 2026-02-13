@@ -19,6 +19,7 @@ services:
       postgres
       -c hba_file=/etc/postgresql/pg_hba.conf
       -c listen_addresses='*'
+#      -c config_file=/etc/postgresql/postgresql.conf
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER_ADMIN} -d ${POSTGRES_DB_ADMIN}"]
@@ -42,7 +43,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./src:/app/src
+      - storage_data_dev:/app/storage
+      - ./.env:/app/.env:ro
     working_dir: /app
     command: ["granian", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--interface", "asgi", "--log-level", "info", "--access-log", "--reload"]
     restart: unless-stopped
@@ -55,3 +57,4 @@ services:
 
 volumes:
   postgres_data_dev:
+  storage_data_dev:

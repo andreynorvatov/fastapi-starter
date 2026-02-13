@@ -19,7 +19,14 @@ services:
       postgres
       -c hba_file=/etc/postgresql/pg_hba.conf
       -c listen_addresses='*'
+#      -c config_file=/etc/postgresql/postgresql.conf
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER_ADMIN} -d ${POSTGRES_DB_ADMIN}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   api:
     build:
@@ -28,6 +35,8 @@ services:
     container_name: fastapi_app
     env_file:
       - .env
+    environment:
+      - POSTGRES_SERVER=postgres
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,6 +44,7 @@ services:
       - "8000:8000"
     volumes:
       - storage_data:/app/storage
+      - ./.env:/app/.env:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/system/health')"]
