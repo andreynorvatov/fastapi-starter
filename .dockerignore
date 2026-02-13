@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.nyc_output
+*.pot
+*.mo
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Project specific
+alembic/versions/*.py
+!alembic/versions/.gitkeep
+migrations/versions/*.py
+!migrations/versions/.gitkeep
+tests/
+docs/
+examples/
+plans/
+storage/.gitkeep
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env_template
+.env.test
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.md
+!README.md
+run_*.sh
+check_tables.py
+docker-compose*.yml
+Dockerfile*
+.pg_hba.conf

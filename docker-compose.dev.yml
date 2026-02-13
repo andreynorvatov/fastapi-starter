@@ -2,7 +2,7 @@
 services:
   postgres:
     image: postgres:15
-    container_name: postgres_db
+    container_name: postgres_db_dev
     env_file:
       - .env
     environment:
@@ -13,31 +13,45 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     command: >
       postgres
       -c hba_file=/etc/postgresql/pg_hba.conf
       -c listen_addresses='*'
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER_ADMIN} -d ${POSTGRES_DB_ADMIN}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   api:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: fastapi_app
+    container_name: fastapi_app_dev
     env_file:
       - .env
     environment:
       - POSTGRES_SERVER=postgres
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
       - ./src:/app/src
     working_dir: /app
     command: ["granian", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--interface", "asgi", "--log-level", "info", "--access-log", "--reload"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/system/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
 
 volumes:
-  postgres_data:
+  postgres_data_dev:
