@@ -16,4 +16,4 @@ api_router.include_router(home_page_router, prefix="", tags=["Главная с�
 api_router.include_router(sse_router, prefix="/example", tags=["SSE"])
 api_router.include_router(file_storage_router, prefix="/files", tags=["Файловое хранилище"])
 api_router.include_router(external_router, prefix="/external", tags=["Внешние API"])
-api_router.include_router(minio_router, tags=["Minio Storage"])
+api_router.include_router(minio_router, prefix="/minio", tags=["Minio Storage"])
