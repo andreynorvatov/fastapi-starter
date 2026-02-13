@@ -46,7 +46,7 @@ services:
       - storage_data_dev:/app/storage
       - ./.env:/app/.env:ro
     working_dir: /app
-    command: ["granian", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--interface", "asgi", "--log-level", "info", "--access-log"]
+    command: ["granian", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "3", "--interface", "asgi", "--log-level", "info", "--access-log"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/system/health')"]
