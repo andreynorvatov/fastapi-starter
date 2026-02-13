@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa
     """Управление жизненным циклом приложения."""
     # Startup
     logger.info(f"Приложение запущено. Уровень логирования: {settings.LOG_LEVEL}")
-    asyncio.create_task(periodic_task())
+    # asyncio.create_task(periodic_task())
     yield
     # Shutdown - корректное закрытие пула соединений
     await async_engine.dispose()

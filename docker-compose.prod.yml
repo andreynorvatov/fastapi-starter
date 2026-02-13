@@ -29,7 +29,9 @@ services:
       start_period: 10s
 
   minio:
-    image: minio/minio:latest
+    build:
+      context: .
+      dockerfile: docker/minio/Dockerfile
     container_name: minio
     env_file:
       - .env

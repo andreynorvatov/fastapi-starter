@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import PostgresDsn, computed_field
+from pydantic import Field, PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.logger import logger
@@ -40,6 +40,14 @@ class Settings(BaseSettings):
 
     # Настройки файлового хранилища
     FILES_STORAGE_PATH: Path = Path("./storage/files")  # Путь к корневой папке хранилища
+    
+    # Настройки Minio
+    MINIO_ENDPOINT: str = Field(default="localhost:9000", description="URL эндпоинта Minio")
+    MINIO_ACCESS_KEY: str = Field(default="minioadmin", description="Ключ доступа Minio")
+    MINIO_SECRET_KEY: str = Field(default="minioadmin", description="Секретный ключ Minio")
+    MINIO_SECURE: bool = Field(default=False, description="Использовать HTTPS для подключения к Minio")
+    MINIO_BUCKET: str = Field(default="fastapi-dev-bkt", description="Название бакета по умолчанию")
+    MINIO_REGION: str = Field(default="ru-central1", description="Регион Minio")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
