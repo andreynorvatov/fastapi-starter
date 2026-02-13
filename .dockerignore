@@ -39,8 +39,8 @@ coverage.xml
 # Project specific
 alembic/versions/*.py
 !alembic/versions/.gitkeep
-migrations/versions/*.py
-!migrations/versions/.gitkeep
+# migrations/versions/*.py
+# !migrations/versions/.gitkeep
 tests/
 docs/
 examples/

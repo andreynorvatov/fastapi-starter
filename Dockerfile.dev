@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     make \
     libpq-dev \
-    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -25,7 +24,7 @@ COPY uv.lock ./uv.lock
 
 # Install dependencies into virtual environment
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen
 
 # Runtime stage
 FROM python:3.14-slim AS runtime
@@ -40,11 +39,14 @@ ENV PYTHONUNBUFFERED=1 \
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd --gid $APP_GID $APP_USER && \
     useradd --uid $APP_UID --gid $APP_GID --create-home --shell /bin/bash $APP_USER
+
+WORKDIR /app
 
 # Copy virtual environment from builder
 COPY --from=builder /app/.venv /app/.venv
@@ -54,12 +56,14 @@ COPY --chown=$APP_USER:$APP_USER src/ ./src/
 COPY --chown=$APP_USER:$APP_USER pyproject.toml ./
 COPY --chown=$APP_USER:$APP_USER alembic.ini ./
 
+# Create storage directory with proper permissions
+RUN mkdir -p /app/storage && chown -R $APP_USER:$APP_USER /app/storage
+
+# Copy migrations
+COPY --chown=$APP_USER:$APP_USER migrations/ ./migrations/
+
 # Create logs directory with proper permissions
 RUN mkdir -p /app/logs && chown -R $APP_USER:$APP_USER /app/logs
-
-# Switch to non-root user
-USER $APP_USER
-
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -67,6 +71,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Expose port
 EXPOSE 8000
+
+# Entrypoint to fix storage permissions and drop privileges
+ENTRYPOINT ["sh", "-c", "chown -R $APP_USER:$APP_USER /app/storage 2>/dev/null || true && exec gosu $APP_USER \"$0\" \"$@\""]
 
 # Run application
 CMD ["granian", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--interface", "asgi", "--log-level", "info", "--access-log"]
