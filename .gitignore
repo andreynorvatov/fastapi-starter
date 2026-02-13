@@ -75,6 +75,7 @@ logs/
 # Database
 *.sqlite
 *.db
+*.sql
 
 # FastAPI/ASGI
 .asgi.py
